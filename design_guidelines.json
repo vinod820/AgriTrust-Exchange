@@ -1,0 +1,120 @@
+{
+  "theme": "Light",
+  "archetype": "Archetype 1 (Organic & Earthy) with Tech/Blockchain Twist",
+  "concept": "Farm meets Future - High-end agritech marketplace merging earthy trust with transparent blockchain analytics.",
+  "typography": {
+    "headings": {
+      "family": "Outfit, sans-serif",
+      "weights": ["400", "700", "900"],
+      "classes": "font-sans tracking-tight"
+    },
+    "body": {
+      "family": "Manrope, sans-serif",
+      "weights": ["400", "500", "600"],
+      "classes": "font-sans leading-relaxed"
+    },
+    "mono": {
+      "family": "JetBrains Mono, monospace",
+      "weights": ["400", "500"],
+      "usage": "Blockchain transactions, wallet addresses, AI confidence scores."
+    },
+    "hierarchy_rules": [
+      "H1 (Hero): text-5xl sm:text-6xl tracking-tighter leading-none",
+      "H2 (Section): text-3xl sm:text-4xl tracking-tight",
+      "H3 (Card/Widget): text-xl sm:text-2xl font-medium",
+      "Labels: text-xs tracking-[0.2em] uppercase",
+      "Do NOT use Inter, Roboto, or Open Sans for headings."
+    ]
+  },
+  "colors": {
+    "background": {
+      "main": "#FDFBF7",
+      "secondary": "#F3F1EB",
+      "surface": "#FFFFFF",
+      "inverse": "#111812"
+    },
+    "text": {
+      "primary": "#1A2E20",
+      "secondary": "#4B5A51",
+      "inverse": "#FDFBF7"
+    },
+    "brand": {
+      "primary": "#2D5A3F",
+      "secondary": "#CCFF00",
+      "tertiary": "#E25C3D"
+    },
+    "accents": {
+      "trust_high": "#00C853",
+      "warning": "#E25C3D",
+      "blockchain_node": "#CCFF00"
+    },
+    "rules": [
+      "Use #2D5A3F (Deep Moss) for structural elements and main CTAs.",
+      "Use #CCFF00 (Volt/Chartreuse) sparingly for blockchain trust indicators, active states, and to break the organic feel with a high-tech punch.",
+      "Never use pure #000000; use #1A2E20 for pure darks."
+    ]
+  },
+  "spacing_and_layout": {
+    "philosophy": "Generous spacing (p-6, p-8) with strict grid structures. No soft dropshadow cards.",
+    "dashboard_grid": "MODE B: 'Control Room' - grid-cols-1 md:grid-cols-3 lg:grid-cols-4, gap-6. Children must stretch h-full.",
+    "marketing_grid": "MODE A: 'Tetris' Bento Grid - grid-cols-1 md:grid-cols-8 lg:grid-cols-12, gap-8.",
+    "surface_styles": "Use 'Grid Borders' pattern. Flat backgrounds, 1px subtle border (border-black/10), NO shadow. Hover state: slight lift (-translate-y-1), border darkens to border-black/30.",
+    "alignment": "Left-align dense content and headings. Avoid center alignment unless for specific marketing hero text."
+  },
+  "components_and_interactions": {
+    "buttons": "Flat, pill-shaped or sharp rectangular. Hover state MUST explicitly change text and background color.",
+    "voice_interface": "Floating action button (FAB) locked to bottom right, pulsing border (The 'Tracing Beam' effect) when listening.",
+    "animations": "Framer motion for page transitions. Staggered list reveals. 'prefers-reduced-motion' must be respected.",
+    "data_viz": "Recharts for analytics. D3 only if showing complex supply-chain node graphs. Use #2D5A3F and #CCFF00 for chart colors.",
+    "testing": "CRITICAL: All interactive elements must have data-testid (e.g., data-testid='voice-command-btn', data-testid='escrow-pay-btn')."
+  },
+  "media": {
+    "image_urls": [
+      {
+        "url": "https://static.prod-images.emergentagent.com/jobs/1d7c1506-eeb9-4090-8d04-3e29c3d1b8da/images/79bc217c2fb9a685686909cb927f2d223d384b404feea2946f802a4000136b8c.png",
+        "category": "hero_background",
+        "description": "Lush green agricultural field at sunrise with subtle glowing digital nodes, representing advanced agritech and blockchain. Use for the main landing/marketing page hero section. Add bg-black/30 overlay if placing text on top."
+      },
+      {
+        "url": "https://static.prod-images.emergentagent.com/jobs/1d7c1506-eeb9-4090-8d04-3e29c3d1b8da/images/16d43294869385ff7e645a91ded99bb1812e8cf956164ea8daae48c4455f3f02.png",
+        "category": "dashboard_background",
+        "description": "Abstract topographical map. Use as a subtle watermark or header background for the Admin/Buyer dashboard."
+      },
+      {
+        "url": "https://static.prod-images.emergentagent.com/jobs/1d7c1506-eeb9-4090-8d04-3e29c3d1b8da/images/e46cdab6b24bebc0f4ca2cfbd63f891b3cf4d29bb1231e418521bf0c9120e164.png",
+        "category": "trust_badge_icon",
+        "description": "3D trust shield blending with a green leaf. Use for the Consumer Trust Meter or Blockchain Verification sections."
+      },
+      {
+        "url": "https://images.pexels.com/photos/7457040/pexels-photo-7457040.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "category": "farmer_profile",
+        "description": "Senior farmer portrait. Use in the Buyer Dashboard when viewing 'Nearby Farmers' or on the video call verification screen mockups."
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1762414103968-0e1c31b1aaca?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzh8MHwxfHNlYXJjaHwyfHxmcmVzaCUyMGhhcnZlc3QlMjBjcm9wcyUyMHZlZ2V0YWJsZXN8ZW58MHx8fHwxNzc1MDQwMjIxfDA&ixlib=rb-4.1.0&q=85",
+        "category": "product_image",
+        "description": "Basket of fresh vegetables. Use for the Consumer Marketplace product cards or Farmer Dashboard registered crops."
+      }
+    ],
+    "rules": [
+      "Images on mobile MUST NOT exceed 80vh.",
+      "Never use placeholder image services like via.placeholder.com.",
+      "If text overlays an image, use a text-shadow or gradient overlay for contrast."
+    ]
+  },
+  "icons_and_libraries": {
+    "icons": "lucide-react for standard UI, phosphor-icons for data/dashboard density if needed.",
+    "animations_lib": "framer-motion for layout transitions and the pulsing voice UI.",
+    "charts": "recharts (Shadcn UI charts) for market trends and trust score history.",
+    "installation": [
+      "yarn add lucide-react framer-motion recharts",
+      "yarn add @radix-ui/react-icons"
+    ]
+  },
+  "page_specific_instructions": {
+    "farmer_app": "Optimize for extreme ease of use. Huge buttons, stark contrast. Voice command is the primary interaction - show a prominent, glowing microphone FAB. Minimal text; rely on icons and spoken feedback (mocked).",
+    "buyer_dashboard": "High data density using the 'Grid Borders' style. Filterable tables for smart search. Video verification UI needs a prominent call-to-action.",
+    "consumer_marketplace": "Bento grid layout focusing on the journey of the crop. QR scan trigger, displaying the 'trust_badge_icon' prominently.",
+    "admin_engine": "Complex analytics dashboard. Use Recharts for fraud detection metrics. Use the 'abstract_topo_dashboard' background in the header for a premium feel."
+  }
+}
