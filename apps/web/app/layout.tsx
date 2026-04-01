@@ -1,10 +1,9 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import { AppShell } from "@/components/dashboard/AppShell";
 
 export const metadata: Metadata = {
-  title: "AgriTrust Exchange",
-  description: "Voice-first agriculture marketplace with AI analysis, escrow, traceability, and live buyer verification."
+  title: "KrishiVoice Chain | Farm Meets Future",
+  description: "Voice-first agriculture marketplace with AI-powered crop analysis, blockchain traceability, and smart escrow payments."
 };
 
 export default function RootLayout({
@@ -14,8 +13,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      </head>
       <body>
-        <AppShell>{children}</AppShell>
+        {children}
       </body>
     </html>
   );
