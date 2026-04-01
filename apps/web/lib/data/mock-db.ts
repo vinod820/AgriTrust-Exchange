@@ -20,11 +20,82 @@ function id(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+// Real crop images from Unsplash/Pexels
+const CROP_IMAGES = {
+  tomato: [
+    "https://images.unsplash.com/photo-1761070852353-c33a65a2aaec?w=800",
+    "https://images.unsplash.com/photo-1631292172709-00b093a058b2?w=800",
+    "https://images.unsplash.com/photo-1631292171396-26a654f51c48?w=800"
+  ],
+  rice: [
+    "https://images.pexels.com/photos/35072278/pexels-photo-35072278.jpeg?auto=compress&cs=tinysrgb&w=800",
+    "https://images.unsplash.com/photo-1759646850616-8bc3e6567ea5?w=800",
+    "https://images.pexels.com/photos/31737301/pexels-photo-31737301.jpeg?auto=compress&cs=tinysrgb&w=800"
+  ],
+  chilli: [
+    "https://images.pexels.com/photos/10899475/pexels-photo-10899475.jpeg?auto=compress&cs=tinysrgb&w=800",
+    "https://images.pexels.com/photos/31278860/pexels-photo-31278860.jpeg?auto=compress&cs=tinysrgb&w=800"
+  ],
+  potato: [
+    "https://images.unsplash.com/photo-1764587492501-bf8b61c09792?w=800",
+    "https://images.pexels.com/photos/30624993/pexels-photo-30624993.jpeg?auto=compress&cs=tinysrgb&w=800",
+    "https://images.unsplash.com/photo-1744659751904-3b2e5c095323?w=800"
+  ],
+  onion: [
+    "https://images.unsplash.com/photo-1683355739329-cea18ba93f02?w=800",
+    "https://images.pexels.com/photos/34894940/pexels-photo-34894940.jpeg?auto=compress&cs=tinysrgb&w=800",
+    "https://images.unsplash.com/photo-1593629718894-e9a8f9f65d01?w=800"
+  ],
+  wheat: [
+    "https://images.unsplash.com/photo-1673200674067-1923f239194d?w=800",
+    "https://images.pexels.com/photos/30297986/pexels-photo-30297986.jpeg?auto=compress&cs=tinysrgb&w=800"
+  ],
+  carrot: [
+    "https://images.unsplash.com/photo-1757332914679-0906a57881e1?w=800",
+    "https://images.pexels.com/photos/35810240/pexels-photo-35810240.jpeg?auto=compress&cs=tinysrgb&w=800"
+  ],
+  mango: [
+    "https://images.pexels.com/photos/30893227/pexels-photo-30893227.jpeg?auto=compress&cs=tinysrgb&w=800",
+    "https://images.pexels.com/photos/5640033/pexels-photo-5640033.jpeg?auto=compress&cs=tinysrgb&w=800"
+  ],
+  cauliflower: [
+    "https://images.pexels.com/photos/31508561/pexels-photo-31508561.jpeg?auto=compress&cs=tinysrgb&w=800",
+    "https://images.unsplash.com/photo-1613743990305-736d763f3d70?w=800"
+  ],
+  cabbage: [
+    "https://images.pexels.com/photos/18717510/pexels-photo-18717510.jpeg?auto=compress&cs=tinysrgb&w=800",
+    "https://images.unsplash.com/photo-1609126986933-e3c84f19d49c?w=800"
+  ]
+};
+
+function getCropImage(crop: string, index = 0) {
+  const key = crop.toLowerCase().replace(/\s+/g, "");
+  const images = CROP_IMAGES[key as keyof typeof CROP_IMAGES] || CROP_IMAGES.tomato;
+  return images[index % images.length];
+}
+
+// Extended farmer database
+const FARMERS = [
+  { name: "Meera Farms", wallet: "0x8b4A...1C3f", location: "Nashik, Maharashtra", trustScore: 96 },
+  { name: "Green Delta Collective", wallet: "0x4c7E...8899", location: "Thanjavur, Tamil Nadu", trustScore: 98 },
+  { name: "Raj Agro", wallet: "0x91a2...7740", location: "Guntur, Andhra Pradesh", trustScore: 82 },
+  { name: "Punjab Kisaan Co-op", wallet: "0x2bF8...4421", location: "Ludhiana, Punjab", trustScore: 94 },
+  { name: "Karnataka Organic", wallet: "0x6dE2...9988", location: "Mysore, Karnataka", trustScore: 97 },
+  { name: "Vidarbha Farmers Union", wallet: "0x3cA1...5567", location: "Nagpur, Maharashtra", trustScore: 91 },
+  { name: "Godavari Agri Trust", wallet: "0x7fB9...3345", location: "Rajahmundry, AP", trustScore: 89 },
+  { name: "Tamil Organic Farms", wallet: "0x9eC4...6612", location: "Coimbatore, Tamil Nadu", trustScore: 95 },
+  { name: "Gujarat Fresh Produce", wallet: "0x1aD5...7789", location: "Ahmedabad, Gujarat", trustScore: 93 },
+  { name: "Konkan Growers", wallet: "0x5bE6...2234", location: "Ratnagiri, Maharashtra", trustScore: 90 },
+  { name: "Telangana Harvest Co.", wallet: "0x8cF7...1123", location: "Warangal, Telangana", trustScore: 88 },
+  { name: "MP Kisan Sangathan", wallet: "0x4dG8...9901", location: "Indore, MP", trustScore: 92 }
+];
+
 let listings: Listing[] = [
+  // TOMATOES - Multiple sellers
   {
     id: "listing-tomato-001",
     batchId: "BATCH-TOM-2401",
-    crop: "Tomato",
+    crop: "Fresh Tomatoes",
     farmerName: "Meera Farms",
     farmerWallet: "0x8b4A...1C3f",
     location: "Nashik, Maharashtra",
@@ -34,27 +105,74 @@ let listings: Listing[] = [
     status: "verified",
     qualityGrade: "A",
     verified: true,
-    images: ["/images/products/tomato.svg"],
-    description: "Hybrid tomatoes packed the same day with cold-chain pickup ready.",
+    images: [getCropImage("tomato", 0)],
+    description: "Premium hybrid tomatoes, hand-picked same day. Cold-chain ready with ripeness guaranteed. Perfect for retail and restaurants.",
     liveRoomId: "room-tomato-001",
-    trustScore: 91,
+    trustScore: 96,
+    farmer: FARMERS[0],
     aiAnalysis: {
       crop: "Tomato",
       disease: "Healthy",
       qualityGrade: "A",
       confidence: 0.94,
-      freshness: 0.9,
+      freshness: 0.92,
       suggestedPricePerKg: 30,
-      recommendations: [
-        "Keep ventilated during transport.",
-        "Dispatch within 24 hours for best shelf life."
-      ]
+      recommendations: ["Keep ventilated during transport.", "Dispatch within 24 hours for best shelf life."]
     }
   },
   {
-    id: "listing-rice-002",
+    id: "listing-tomato-002",
+    batchId: "BATCH-TOM-2402",
+    crop: "Organic Cherry Tomatoes",
+    farmerName: "Karnataka Organic",
+    farmerWallet: "0x6dE2...9988",
+    location: "Mysore, Karnataka",
+    quantityKg: 350,
+    pricePerKg: 45,
+    harvestDate: "2026-03-30",
+    status: "verified",
+    qualityGrade: "A+",
+    verified: true,
+    images: [getCropImage("tomato", 1)],
+    description: "Certified organic cherry tomatoes. Sweet, juicy, and pesticide-free. Ideal for salads and gourmet cooking.",
+    liveRoomId: "room-tomato-002",
+    trustScore: 97,
+    farmer: FARMERS[4],
+    aiAnalysis: {
+      crop: "Cherry Tomato",
+      disease: "Healthy",
+      qualityGrade: "A+",
+      confidence: 0.97,
+      freshness: 0.95,
+      suggestedPricePerKg: 48,
+      recommendations: ["Premium quality - suitable for export", "Store at 12-15°C"]
+    }
+  },
+  {
+    id: "listing-tomato-003",
+    batchId: "BATCH-TOM-2403",
+    crop: "Roma Tomatoes",
+    farmerName: "Gujarat Fresh Produce",
+    farmerWallet: "0x1aD5...7789",
+    location: "Ahmedabad, Gujarat",
+    quantityKg: 1200,
+    pricePerKg: 24,
+    harvestDate: "2026-03-28",
+    status: "verified",
+    qualityGrade: "A",
+    verified: true,
+    images: [getCropImage("tomato", 2)],
+    description: "Bulk Roma tomatoes perfect for processing, sauces, and paste. Firm texture with excellent shelf life.",
+    liveRoomId: "room-tomato-003",
+    trustScore: 93,
+    farmer: FARMERS[8]
+  },
+
+  // RICE - Multiple sellers
+  {
+    id: "listing-rice-001",
     batchId: "BATCH-RICE-8812",
-    crop: "Rice",
+    crop: "Premium Ponni Rice",
     farmerName: "Green Delta Collective",
     farmerWallet: "0x4c7E...8899",
     location: "Thanjavur, Tamil Nadu",
@@ -64,10 +182,11 @@ let listings: Listing[] = [
     status: "escrow_locked",
     qualityGrade: "A+",
     verified: true,
-    images: ["/images/products/rice.svg"],
-    description: "Premium ponni rice with moisture test report and verified origin.",
-    liveRoomId: "room-rice-002",
-    trustScore: 96,
+    images: [getCropImage("rice", 0)],
+    description: "Premium ponni rice with moisture test report. Aromatic and fluffy when cooked. Verified origin with lab reports.",
+    liveRoomId: "room-rice-001",
+    trustScore: 98,
+    farmer: FARMERS[1],
     aiAnalysis: {
       crop: "Rice",
       disease: "Healthy",
@@ -75,15 +194,172 @@ let listings: Listing[] = [
       confidence: 0.97,
       freshness: 0.86,
       suggestedPricePerKg: 46,
-      recommendations: [
-        "Store below 14 percent moisture.",
-        "Seal lot after final bagging."
-      ]
+      recommendations: ["Store below 14% moisture.", "Seal lot after final bagging."]
     }
   },
   {
-    id: "listing-chilli-003",
-    batchId: "BATCH-CH-7703",
+    id: "listing-rice-002",
+    batchId: "BATCH-RICE-8813",
+    crop: "Basmati Rice",
+    farmerName: "Punjab Kisaan Co-op",
+    farmerWallet: "0x2bF8...4421",
+    location: "Ludhiana, Punjab",
+    quantityKg: 5000,
+    pricePerKg: 65,
+    harvestDate: "2026-03-15",
+    status: "verified",
+    qualityGrade: "A+",
+    verified: true,
+    images: [getCropImage("rice", 1)],
+    description: "Long-grain aged Basmati rice. Extra-long grains with signature aroma. Ideal for biryani and special occasions.",
+    liveRoomId: "room-rice-002",
+    trustScore: 94,
+    farmer: FARMERS[3]
+  },
+  {
+    id: "listing-rice-003",
+    batchId: "BATCH-RICE-8814",
+    crop: "Sona Masoori Rice",
+    farmerName: "Telangana Harvest Co.",
+    farmerWallet: "0x8cF7...1123",
+    location: "Warangal, Telangana",
+    quantityKg: 3500,
+    pricePerKg: 38,
+    harvestDate: "2026-03-22",
+    status: "verified",
+    qualityGrade: "A",
+    verified: true,
+    images: [getCropImage("rice", 2)],
+    description: "Premium Sona Masoori - lightweight and aromatic. Low glycemic index, perfect for daily cooking.",
+    liveRoomId: "room-rice-003",
+    trustScore: 88,
+    farmer: FARMERS[10]
+  },
+
+  // POTATOES
+  {
+    id: "listing-potato-001",
+    batchId: "BATCH-POT-4401",
+    crop: "Fresh Potatoes",
+    farmerName: "MP Kisan Sangathan",
+    farmerWallet: "0x4dG8...9901",
+    location: "Indore, MP",
+    quantityKg: 8000,
+    pricePerKg: 18,
+    harvestDate: "2026-03-25",
+    status: "verified",
+    qualityGrade: "A",
+    verified: true,
+    images: [getCropImage("potato", 0)],
+    description: "Premium table potatoes, sorted and graded. Ideal for chips, fries, and cooking. Bulk discount available.",
+    liveRoomId: "room-potato-001",
+    trustScore: 92,
+    farmer: FARMERS[11]
+  },
+  {
+    id: "listing-potato-002",
+    batchId: "BATCH-POT-4402",
+    crop: "Baby Potatoes",
+    farmerName: "Punjab Kisaan Co-op",
+    farmerWallet: "0x2bF8...4421",
+    location: "Ludhiana, Punjab",
+    quantityKg: 1500,
+    pricePerKg: 32,
+    harvestDate: "2026-03-28",
+    status: "verified",
+    qualityGrade: "A+",
+    verified: true,
+    images: [getCropImage("potato", 1)],
+    description: "Premium baby potatoes - tender and creamy. Perfect for roasting, salads, and gourmet dishes.",
+    liveRoomId: "room-potato-002",
+    trustScore: 94,
+    farmer: FARMERS[3]
+  },
+
+  // ONIONS
+  {
+    id: "listing-onion-001",
+    batchId: "BATCH-ONI-5501",
+    crop: "Red Onions",
+    farmerName: "Vidarbha Farmers Union",
+    farmerWallet: "0x3cA1...5567",
+    location: "Nagpur, Maharashtra",
+    quantityKg: 6000,
+    pricePerKg: 22,
+    harvestDate: "2026-03-26",
+    status: "verified",
+    qualityGrade: "A",
+    verified: true,
+    images: [getCropImage("onion", 0)],
+    description: "Fresh red onions, properly cured and sorted. Strong flavor with excellent storage life.",
+    liveRoomId: "room-onion-001",
+    trustScore: 91,
+    farmer: FARMERS[5]
+  },
+  {
+    id: "listing-onion-002",
+    batchId: "BATCH-ONI-5502",
+    crop: "White Onions",
+    farmerName: "Gujarat Fresh Produce",
+    farmerWallet: "0x1aD5...7789",
+    location: "Ahmedabad, Gujarat",
+    quantityKg: 4000,
+    pricePerKg: 25,
+    harvestDate: "2026-03-27",
+    status: "verified",
+    qualityGrade: "A",
+    verified: true,
+    images: [getCropImage("onion", 1)],
+    description: "Premium white onions with mild, sweet flavor. Ideal for salads, salsas, and garnishing.",
+    liveRoomId: "room-onion-002",
+    trustScore: 93,
+    farmer: FARMERS[8]
+  },
+
+  // WHEAT
+  {
+    id: "listing-wheat-001",
+    batchId: "BATCH-WHT-6601",
+    crop: "Sharbati Wheat",
+    farmerName: "MP Kisan Sangathan",
+    farmerWallet: "0x4dG8...9901",
+    location: "Indore, MP",
+    quantityKg: 15000,
+    pricePerKg: 28,
+    harvestDate: "2026-03-10",
+    status: "verified",
+    qualityGrade: "A+",
+    verified: true,
+    images: [getCropImage("wheat", 0)],
+    description: "Premium Sharbati wheat - known for soft texture and sweet taste. Excellent for chapatis and bread.",
+    liveRoomId: "room-wheat-001",
+    trustScore: 92,
+    farmer: FARMERS[11]
+  },
+  {
+    id: "listing-wheat-002",
+    batchId: "BATCH-WHT-6602",
+    crop: "Durum Wheat",
+    farmerName: "Punjab Kisaan Co-op",
+    farmerWallet: "0x2bF8...4421",
+    location: "Ludhiana, Punjab",
+    quantityKg: 10000,
+    pricePerKg: 32,
+    harvestDate: "2026-03-12",
+    status: "verified",
+    qualityGrade: "A",
+    verified: true,
+    images: [getCropImage("wheat", 1)],
+    description: "High-protein durum wheat. Perfect for pasta, semolina, and industrial processing.",
+    liveRoomId: "room-wheat-002",
+    trustScore: 94,
+    farmer: FARMERS[3]
+  },
+
+  // GREEN CHILLIES
+  {
+    id: "listing-chilli-001",
+    batchId: "BATCH-CHI-7701",
     crop: "Green Chilli",
     farmerName: "Raj Agro",
     farmerWallet: "0x91a2...7740",
@@ -94,17 +370,159 @@ let listings: Listing[] = [
     status: "flagged",
     qualityGrade: "B",
     verified: false,
-    images: ["/images/products/green-chilli.svg"],
-    description: "Fresh green chilli lot awaiting re-verification after image duplication warning.",
-    liveRoomId: "room-chilli-003",
-    trustScore: 62
+    images: [getCropImage("chilli", 0)],
+    description: "Fresh green chillies from Guntur. Awaiting re-verification after quality check.",
+    liveRoomId: "room-chilli-001",
+    trustScore: 82,
+    farmer: FARMERS[2]
+  },
+  {
+    id: "listing-chilli-002",
+    batchId: "BATCH-CHI-7702",
+    crop: "Bird Eye Chilli",
+    farmerName: "Godavari Agri Trust",
+    farmerWallet: "0x7fB9...3345",
+    location: "Rajahmundry, AP",
+    quantityKg: 200,
+    pricePerKg: 85,
+    harvestDate: "2026-03-29",
+    status: "verified",
+    qualityGrade: "A",
+    verified: true,
+    images: [getCropImage("chilli", 1)],
+    description: "Premium bird eye chillies - extremely hot and aromatic. Ideal for pickles and spice blends.",
+    liveRoomId: "room-chilli-002",
+    trustScore: 89,
+    farmer: FARMERS[6]
+  },
+
+  // CARROTS
+  {
+    id: "listing-carrot-001",
+    batchId: "BATCH-CAR-8801",
+    crop: "Fresh Carrots",
+    farmerName: "Karnataka Organic",
+    farmerWallet: "0x6dE2...9988",
+    location: "Mysore, Karnataka",
+    quantityKg: 800,
+    pricePerKg: 35,
+    harvestDate: "2026-03-28",
+    status: "verified",
+    qualityGrade: "A",
+    verified: true,
+    images: [getCropImage("carrot", 0)],
+    description: "Sweet organic carrots, freshly harvested. Rich in beta-carotene. Perfect for juicing and salads.",
+    liveRoomId: "room-carrot-001",
+    trustScore: 97,
+    farmer: FARMERS[4]
+  },
+  {
+    id: "listing-carrot-002",
+    batchId: "BATCH-CAR-8802",
+    crop: "Red Carrots",
+    farmerName: "Tamil Organic Farms",
+    farmerWallet: "0x9eC4...6612",
+    location: "Coimbatore, Tamil Nadu",
+    quantityKg: 600,
+    pricePerKg: 40,
+    harvestDate: "2026-03-29",
+    status: "verified",
+    qualityGrade: "A+",
+    verified: true,
+    images: [getCropImage("carrot", 1)],
+    description: "Traditional red carrots with intense color and sweetness. Excellent for traditional recipes.",
+    liveRoomId: "room-carrot-002",
+    trustScore: 95,
+    farmer: FARMERS[7]
+  },
+
+  // MANGOES
+  {
+    id: "listing-mango-001",
+    batchId: "BATCH-MNG-9901",
+    crop: "Alphonso Mangoes",
+    farmerName: "Konkan Growers",
+    farmerWallet: "0x5bE6...2234",
+    location: "Ratnagiri, Maharashtra",
+    quantityKg: 500,
+    pricePerKg: 180,
+    harvestDate: "2026-03-30",
+    status: "verified",
+    qualityGrade: "A+",
+    verified: true,
+    images: [getCropImage("mango", 0)],
+    description: "Premium Alphonso mangoes from Ratnagiri - the king of mangoes. GI certified with carbide-free ripening.",
+    liveRoomId: "room-mango-001",
+    trustScore: 90,
+    farmer: FARMERS[9]
+  },
+  {
+    id: "listing-mango-002",
+    batchId: "BATCH-MNG-9902",
+    crop: "Kesar Mangoes",
+    farmerName: "Gujarat Fresh Produce",
+    farmerWallet: "0x1aD5...7789",
+    location: "Ahmedabad, Gujarat",
+    quantityKg: 800,
+    pricePerKg: 120,
+    harvestDate: "2026-03-28",
+    status: "verified",
+    qualityGrade: "A",
+    verified: true,
+    images: [getCropImage("mango", 1)],
+    description: "Sweet Kesar mangoes with rich golden flesh. Perfect for desserts, shakes, and fresh eating.",
+    liveRoomId: "room-mango-002",
+    trustScore: 93,
+    farmer: FARMERS[8]
+  },
+
+  // CAULIFLOWER
+  {
+    id: "listing-cauliflower-001",
+    batchId: "BATCH-CAU-1001",
+    crop: "Fresh Cauliflower",
+    farmerName: "Punjab Kisaan Co-op",
+    farmerWallet: "0x2bF8...4421",
+    location: "Ludhiana, Punjab",
+    quantityKg: 1200,
+    pricePerKg: 28,
+    harvestDate: "2026-03-29",
+    status: "verified",
+    qualityGrade: "A",
+    verified: true,
+    images: [getCropImage("cauliflower", 0)],
+    description: "Fresh, white cauliflower heads. Tightly packed florets with no blemishes. Cold storage ready.",
+    liveRoomId: "room-cauliflower-001",
+    trustScore: 94,
+    farmer: FARMERS[3]
+  },
+
+  // CABBAGE
+  {
+    id: "listing-cabbage-001",
+    batchId: "BATCH-CAB-1101",
+    crop: "Green Cabbage",
+    farmerName: "Karnataka Organic",
+    farmerWallet: "0x6dE2...9988",
+    location: "Mysore, Karnataka",
+    quantityKg: 2000,
+    pricePerKg: 15,
+    harvestDate: "2026-03-28",
+    status: "verified",
+    qualityGrade: "A",
+    verified: true,
+    images: [getCropImage("cabbage", 0)],
+    description: "Crisp green cabbage, organically grown. Perfect for salads, stir-fry, and fermentation.",
+    liveRoomId: "room-cabbage-001",
+    trustScore: 97,
+    farmer: FARMERS[4]
   }
 ];
 
 let orders: Order[] = [
   {
     id: "order-001",
-    listingId: "listing-rice-002",
+    listingId: "listing-rice-001",
     batchId: "BATCH-RICE-8812",
     buyerName: "Metro Fresh Foods",
     buyerWallet: "0x0aaB...2390",
@@ -112,6 +530,17 @@ let orders: Order[] = [
     totalAmount: 35200,
     escrowStatus: "locked",
     createdAt: isoMinutesAgo(160)
+  },
+  {
+    id: "order-002",
+    listingId: "listing-tomato-001",
+    batchId: "BATCH-TOM-2401",
+    buyerName: "Fresh Basket Retail",
+    buyerWallet: "0x1bBc...3401",
+    quantityKg: 400,
+    totalAmount: 11200,
+    escrowStatus: "pending",
+    createdAt: isoMinutesAgo(45)
   }
 ];
 
@@ -152,22 +581,12 @@ let traceEvents: TraceEvent[] = [
   }
 ];
 
-let videoRooms: VideoRoom[] = [
-  {
-    id: "room-tomato-001",
-    listingId: "listing-tomato-001",
-    farmerName: "Meera Farms",
-    buyerName: "Fresh Basket Retail",
-    createdAt: isoMinutesAgo(50)
-  },
-  {
-    id: "room-rice-002",
-    listingId: "listing-rice-002",
-    farmerName: "Green Delta Collective",
-    buyerName: "Metro Fresh Foods",
-    createdAt: isoMinutesAgo(180)
-  }
-];
+let videoRooms: VideoRoom[] = listings.map(listing => ({
+  id: listing.liveRoomId ?? id("room"),
+  listingId: listing.id,
+  farmerName: listing.farmerName,
+  createdAt: isoMinutesAgo(Math.floor(Math.random() * 300))
+}));
 
 let fraudFlags: FraudFlag[] = listings.flatMap((listing) => evaluateFraud(listing));
 
@@ -176,7 +595,7 @@ export function getListings() {
 }
 
 export function getFeaturedListings() {
-  return listings.slice(0, 3);
+  return listings.filter(l => l.verified).slice(0, 6);
 }
 
 export function getListingById(listingId: string) {

@@ -18,3 +18,7 @@ typechain-types/
 prisma/dev.db
 prisma/dev.db-journal
 
+-e 
+# Environment files
+*.env
+*.env.*
