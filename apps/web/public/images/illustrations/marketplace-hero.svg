@@ -1,0 +1,29 @@
+<svg width="1200" height="820" viewBox="0 0 1200 820" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="820" rx="44" fill="url(#bg)"/>
+  <rect x="84" y="92" width="1032" height="636" rx="36" fill="white" fill-opacity="0.68"/>
+  <rect x="138" y="148" width="390" height="216" rx="28" fill="#FFFFFF"/>
+  <rect x="560" y="148" width="504" height="132" rx="28" fill="#FFF6D6"/>
+  <rect x="560" y="304" width="240" height="312" rx="28" fill="#EFF8FF"/>
+  <rect x="824" y="304" width="240" height="312" rx="28" fill="#F1FCEA"/>
+  <text x="186" y="226" fill="#234438" font-family="Segoe UI, Arial, sans-serif" font-size="42" font-weight="700">Marketplace ready</text>
+  <text x="186" y="280" fill="#5D7268" font-family="Segoe UI, Arial, sans-serif" font-size="24">Seller listings, buyer discovery, AI grading, live verification, escrow, and public trace.</text>
+  <circle cx="254" cy="512" r="72" fill="#F45D51"/>
+  <path d="M251 425C277 435 296 455 307 485C276 484 253 480 239 470C242 452 246 437 251 425Z" fill="#66B85D"/>
+  <rect x="560" y="182" width="218" height="28" rx="14" fill="#F8CE57"/>
+  <rect x="560" y="226" width="346" height="18" rx="9" fill="#E8D48B"/>
+  <rect x="598" y="360" width="160" height="160" rx="24" fill="#FFF0C1"/>
+  <ellipse cx="678" cy="440" rx="56" ry="64" fill="#E6B46E"/>
+  <ellipse cx="944" cy="430" rx="58" ry="74" fill="#75D068"/>
+  <path d="M918 364C943 380 959 405 966 439C935 439 913 433 900 421C903 401 909 382 918 364Z" fill="#5BAA50"/>
+  <rect x="188" y="598" width="164" height="20" rx="10" fill="#F0F4F9"/>
+  <rect x="188" y="632" width="228" height="16" rx="8" fill="#E4ECF7"/>
+  <rect x="438" y="598" width="164" height="20" rx="10" fill="#F0F4F9"/>
+  <rect x="438" y="632" width="228" height="16" rx="8" fill="#E4ECF7"/>
+  <defs>
+    <linearGradient id="bg" x1="84" y1="62" x2="1118" y2="764" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF8DD"/>
+      <stop offset="0.52" stop-color="#F1FFF0"/>
+      <stop offset="1" stop-color="#EEF5FF"/>
+    </linearGradient>
+  </defs>
+</svg>

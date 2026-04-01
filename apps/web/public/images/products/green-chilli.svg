@@ -1,0 +1,24 @@
+<svg width="960" height="720" viewBox="0 0 960 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="960" height="720" rx="40" fill="url(#bg)"/>
+  <circle cx="186" cy="156" r="94" fill="#DDF7CF" opacity="0.9"/>
+  <circle cx="790" cy="172" r="112" fill="#E6F4FF" opacity="0.8"/>
+  <circle cx="812" cy="564" r="102" fill="#FFF3CC" opacity="0.75"/>
+  <rect x="62" y="62" width="836" height="596" rx="32" fill="white" fill-opacity="0.42" stroke="white" stroke-opacity="0.55" stroke-width="2"/>
+  <rect x="102" y="102" width="756" height="516" rx="28" fill="#FCFFF9" fill-opacity="0.88"/>
+  <text x="132" y="164" fill="#32453F" font-family="Segoe UI, Arial, sans-serif" font-size="34" font-weight="700">Green Chilli Batch</text>
+  <text x="132" y="208" fill="#6B7D74" font-family="Segoe UI, Arial, sans-serif" font-size="20">Keep this file name and replace the artwork with your real chilli photo later.</text>
+  <ellipse cx="470" cy="446" rx="238" ry="92" fill="#E7F7D8"/>
+  <path d="M306 354C356 282 451 246 592 246C562 372 486 465 365 526C322 547 281 512 291 468C301 426 306 388 306 354Z" fill="#6AC45B"/>
+  <path d="M361 323C403 287 480 274 592 284C566 374 500 442 392 489C355 505 322 477 331 441C339 407 349 368 361 323Z" fill="#7ADA63"/>
+  <path d="M309 344C287 313 283 285 297 260C331 270 354 287 367 311C350 328 330 339 309 344Z" fill="#4E9E44"/>
+  <path d="M606 264C630 278 646 300 654 332C619 333 594 328 579 317C583 295 592 277 606 264Z" fill="#58A94F"/>
+  <path d="M470 438C552 380 612 370 651 408" stroke="#4D9345" stroke-width="14" stroke-linecap="round"/>
+  <text x="132" y="588" fill="#50645B" font-family="Segoe UI, Arial, sans-serif" font-size="22">File name: green-chilli.svg</text>
+  <defs>
+    <linearGradient id="bg" x1="70" y1="46" x2="892" y2="668" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F3FFEE"/>
+      <stop offset="0.48" stop-color="#EEFFE1"/>
+      <stop offset="1" stop-color="#FFF7DD"/>
+    </linearGradient>
+  </defs>
+</svg>

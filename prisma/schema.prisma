@@ -1,0 +1,120 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  FARMER
+  BUYER
+  CONSUMER
+  ADMIN
+}
+
+enum ListingStatus {
+  DRAFT
+  LISTED
+  UNDER_REVIEW
+  VERIFIED
+  ESCROW_LOCKED
+  DELIVERED
+  COMPLETED
+  FLAGGED
+}
+
+enum EscrowStatus {
+  PENDING
+  LOCKED
+  RELEASED
+  REFUNDED
+  DISPUTED
+}
+
+enum FraudSeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model User {
+  id           String    @id @default(cuid())
+  name         String
+  wallet       String    @unique
+  role         Role
+  location     String?
+  verified     Boolean   @default(false)
+  trustScore   Int       @default(50)
+  createdAt    DateTime  @default(now())
+  listings     Listing[]
+  buyOrders    Order[]   @relation("BuyerOrders")
+}
+
+model Listing {
+  id               String         @id @default(cuid())
+  batchId          String         @unique
+  crop             String
+  farmerId         String
+  farmer           User           @relation(fields: [farmerId], references: [id])
+  location         String
+  quantityKg       Float
+  pricePerKg       Float
+  harvestDate      DateTime
+  status           ListingStatus  @default(UNDER_REVIEW)
+  qualityGrade     String?
+  aiDisease        String?
+  aiConfidence     Float?
+  suggestedPrice   Float?
+  description      String
+  liveRoomId       String?
+  createdAt        DateTime       @default(now())
+  orders           Order[]
+  fraudFlags       FraudFlag[]
+  traceEvents      TraceEvent[]
+  videoRoom        VideoRoom?
+}
+
+model Order {
+  id            String       @id @default(cuid())
+  listingId     String
+  listing       Listing      @relation(fields: [listingId], references: [id])
+  buyerId       String
+  buyer         User         @relation("BuyerOrders", fields: [buyerId], references: [id])
+  quantityKg    Float
+  totalAmount   Float
+  escrowStatus  EscrowStatus @default(PENDING)
+  txHash        String?
+  createdAt     DateTime     @default(now())
+}
+
+model FraudFlag {
+  id         String         @id @default(cuid())
+  listingId  String
+  listing    Listing        @relation(fields: [listingId], references: [id])
+  rule       String
+  severity   FraudSeverity
+  detail     String
+  createdAt  DateTime       @default(now())
+}
+
+model TraceEvent {
+  id         String    @id @default(cuid())
+  listingId  String
+  listing    Listing   @relation(fields: [listingId], references: [id])
+  title      String
+  detail     String
+  txHash     String?
+  status     String
+  createdAt  DateTime  @default(now())
+}
+
+model VideoRoom {
+  id          String   @id @default(cuid())
+  listingId   String   @unique
+  listing     Listing  @relation(fields: [listingId], references: [id])
+  roomKey     String   @unique
+  buyerName   String?
+  createdAt   DateTime @default(now())
+}

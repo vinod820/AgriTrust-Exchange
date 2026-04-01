@@ -1,0 +1,21 @@
+<svg width="960" height="720" viewBox="0 0 960 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="960" height="720" rx="40" fill="url(#bg)"/>
+  <rect x="74" y="74" width="812" height="572" rx="36" fill="white" fill-opacity="0.6"/>
+  <text x="132" y="190" fill="#32453F" font-family="Segoe UI, Arial, sans-serif" font-size="38" font-weight="700">Produce Image Placeholder</text>
+  <text x="132" y="240" fill="#64776F" font-family="Segoe UI, Arial, sans-serif" font-size="22">Add your crop image in this folder and keep the same file name if you want the UI to pick it up.</text>
+  <rect x="158" y="308" width="210" height="210" rx="44" fill="#FFE4B8"/>
+  <rect x="374" y="308" width="210" height="210" rx="44" fill="#DCF5D2"/>
+  <rect x="590" y="308" width="210" height="210" rx="44" fill="#DCEBFF"/>
+  <circle cx="263" cy="414" r="58" fill="#F36C5F"/>
+  <path d="M258 344C284 352 301 370 309 398C278 398 256 394 243 385C246 368 251 355 258 344Z" fill="#64B85E"/>
+  <path d="M479 345C512 358 534 383 544 420C501 420 470 413 451 398C455 377 464 359 479 345Z" fill="#62BE56"/>
+  <ellipse cx="693" cy="416" rx="62" ry="70" fill="#C78ED8"/>
+  <text x="132" y="588" fill="#50645B" font-family="Segoe UI, Arial, sans-serif" font-size="22">File name: produce-placeholder.svg</text>
+  <defs>
+    <linearGradient id="bg" x1="62" y1="40" x2="898" y2="678" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF7E6"/>
+      <stop offset="0.5" stop-color="#F2FFF1"/>
+      <stop offset="1" stop-color="#EEF5FF"/>
+    </linearGradient>
+  </defs>
+</svg>

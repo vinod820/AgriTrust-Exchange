@@ -1,0 +1,30 @@
+{
+  "name": "apps-web",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.20.0",
+    "ethers": "^6.13.0",
+    "next": "^14.2.0",
+    "qrcode.react": "^4.2.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-speech-recognition": "^3.10.0",
+    "simple-peer": "^9.11.1",
+    "socket.io-client": "^4.8.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@types/simple-peer": "^9.11.8",
+    "prisma": "^5.20.0",
+    "typescript": "^5.7.2"
+  }
+}

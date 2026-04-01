@@ -1,0 +1,12 @@
+{
+  "name": "agritrust-signaling",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "socket.io": "^4.8.0"
+  }
+}
+

@@ -1,0 +1,24 @@
+<svg width="960" height="720" viewBox="0 0 960 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="960" height="720" rx="40" fill="url(#bg)"/>
+  <circle cx="194" cy="148" r="95" fill="#F4E8FF" opacity="0.9"/>
+  <circle cx="792" cy="182" r="116" fill="#FFF2C6" opacity="0.72"/>
+  <circle cx="158" cy="578" r="110" fill="#E8F6EF" opacity="0.75"/>
+  <rect x="62" y="62" width="836" height="596" rx="32" fill="white" fill-opacity="0.42" stroke="white" stroke-opacity="0.55" stroke-width="2"/>
+  <rect x="102" y="102" width="756" height="516" rx="28" fill="#FFFDFE" fill-opacity="0.88"/>
+  <text x="132" y="164" fill="#32453F" font-family="Segoe UI, Arial, sans-serif" font-size="34" font-weight="700">Onion Batch</text>
+  <text x="132" y="208" fill="#6B7D74" font-family="Segoe UI, Arial, sans-serif" font-size="20">Use this onion placeholder until you add your own product image.</text>
+  <ellipse cx="470" cy="450" rx="220" ry="90" fill="#F0E7FF"/>
+  <ellipse cx="436" cy="392" rx="108" ry="126" fill="#C989D9"/>
+  <ellipse cx="560" cy="418" rx="92" ry="114" fill="#B976CD"/>
+  <ellipse cx="372" cy="482" rx="80" ry="96" fill="#D497E2"/>
+  <path d="M420 248C392 269 375 295 371 327C402 318 426 304 443 286C439 274 431 261 420 248Z" fill="#70BA63"/>
+  <path d="M484 235C513 252 532 276 542 307C508 308 482 301 465 288C467 269 473 251 484 235Z" fill="#5BAA50"/>
+  <text x="132" y="588" fill="#50645B" font-family="Segoe UI, Arial, sans-serif" font-size="22">File name: onion.svg</text>
+  <defs>
+    <linearGradient id="bg" x1="71" y1="46" x2="890" y2="670" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FBF4FF"/>
+      <stop offset="0.52" stop-color="#FFF7E2"/>
+      <stop offset="1" stop-color="#EEF8EE"/>
+    </linearGradient>
+  </defs>
+</svg>

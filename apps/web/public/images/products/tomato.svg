@@ -1,0 +1,26 @@
+<svg width="960" height="720" viewBox="0 0 960 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="960" height="720" rx="40" fill="url(#bg)"/>
+  <circle cx="195" cy="138" r="92" fill="#FFD9D2" opacity="0.8"/>
+  <circle cx="792" cy="152" r="118" fill="#FFF0B3" opacity="0.7"/>
+  <circle cx="830" cy="598" r="96" fill="#DFF5DE" opacity="0.75"/>
+  <rect x="62" y="62" width="836" height="596" rx="32" fill="white" fill-opacity="0.4" stroke="white" stroke-opacity="0.55" stroke-width="2"/>
+  <rect x="102" y="102" width="756" height="516" rx="28" fill="#FFFDFB" fill-opacity="0.84"/>
+  <text x="132" y="164" fill="#32453F" font-family="Segoe UI, Arial, sans-serif" font-size="34" font-weight="700">Fresh Tomato Lot</text>
+  <text x="132" y="208" fill="#6B7D74" font-family="Segoe UI, Arial, sans-serif" font-size="20">Replace this file with your real tomato product photo anytime.</text>
+  <ellipse cx="492" cy="424" rx="224" ry="98" fill="#D8F0DA"/>
+  <circle cx="448" cy="386" r="114" fill="#F45A4D"/>
+  <circle cx="584" cy="408" r="100" fill="#E9473A"/>
+  <circle cx="376" cy="470" r="88" fill="#F86C61"/>
+  <circle cx="516" cy="492" r="82" fill="#F15749"/>
+  <path d="M445 272C464 236 494 218 532 216C517 250 508 271 502 281C481 287 462 284 445 272Z" fill="#6CBF69"/>
+  <path d="M525 221C565 236 592 262 607 299C560 297 527 291 508 281C511 255 517 235 525 221Z" fill="#53A84F"/>
+  <path d="M495 214C485 245 483 270 490 291C456 297 426 294 399 282C424 244 456 222 495 214Z" fill="#7AD071"/>
+  <text x="132" y="588" fill="#50645B" font-family="Segoe UI, Arial, sans-serif" font-size="22">File name: tomato.svg</text>
+  <defs>
+    <linearGradient id="bg" x1="68" y1="34" x2="894" y2="670" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF3EE"/>
+      <stop offset="0.5" stop-color="#FFF9E1"/>
+      <stop offset="1" stop-color="#EEF8EE"/>
+    </linearGradient>
+  </defs>
+</svg>
