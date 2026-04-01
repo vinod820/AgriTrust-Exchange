@@ -94,6 +94,8 @@ export function RoleLoginPortal() {
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               placeholder="name@example.com"
+              name="email"
+              aria-label="email"
             />
           </label>
 
@@ -104,6 +106,8 @@ export function RoleLoginPortal() {
               onChange={(event) => setPassword(event.target.value)}
               placeholder="Enter password"
               type="password"
+              name="password"
+              aria-label="password"
             />
           </label>
 
@@ -125,6 +129,7 @@ export function RoleLoginPortal() {
                     type="button"
                     className={`role-choice-card ${isActive ? "role-choice-card-active" : ""}`}
                     onClick={() => setSelectedRole(role.id)}
+                    data-voice={`choose ${role.label.toLowerCase()} select ${role.label.toLowerCase()} continue as ${role.label.toLowerCase()}`}
                   >
                     <strong>{role.label}</strong>
                     <span>{role.description}</span>
@@ -140,7 +145,7 @@ export function RoleLoginPortal() {
           </div>
 
           <div className="button-row">
-            <button className="button" type="submit">
+            <button className="button" type="submit" data-voice={`continue as ${activeRole.label.toLowerCase()} enter ${activeRole.label.toLowerCase()} portal`}>
               Continue as {activeRole.label}
             </button>
           </div>

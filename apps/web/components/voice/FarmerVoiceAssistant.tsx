@@ -7,19 +7,13 @@ type BrowserSpeechRecognition = {
   interimResults: boolean;
   lang: string;
   onresult: ((event: any) => void) | null;
+  onerror: ((event: any) => void) | null;
   onend: (() => void) | null;
   start: () => void;
   stop: () => void;
 };
 
 type BrowserSpeechRecognitionCtor = new () => BrowserSpeechRecognition;
-
-declare global {
-  interface Window {
-    SpeechRecognition?: BrowserSpeechRecognitionCtor;
-    webkitSpeechRecognition?: BrowserSpeechRecognitionCtor;
-  }
-}
 
 export function FarmerVoiceAssistant() {
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
@@ -30,7 +24,11 @@ export function FarmerVoiceAssistant() {
   const [listening, setListening] = useState(false);
 
   useEffect(() => {
-    const RecognitionCtor = window.SpeechRecognition ?? window.webkitSpeechRecognition;
+    const speechWindow = window as Window & {
+      SpeechRecognition?: BrowserSpeechRecognitionCtor;
+      webkitSpeechRecognition?: BrowserSpeechRecognitionCtor;
+    };
+    const RecognitionCtor = speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition;
     if (!RecognitionCtor) {
       setSupported(false);
       return;
@@ -51,6 +49,9 @@ export function FarmerVoiceAssistant() {
       routeCommand(nextTranscript.toLowerCase());
     };
     recognition.onend = () => {
+      setListening(false);
+    };
+    recognition.onerror = () => {
       setListening(false);
     };
     recognitionRef.current = recognition;

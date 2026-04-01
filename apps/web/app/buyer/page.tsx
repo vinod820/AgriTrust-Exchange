@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type KeyboardEvent, type MouseEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   Search,
@@ -13,14 +14,12 @@ import {
   Leaf,
   CheckCircle2,
   Grid3X3,
-  List,
-  Mic
+  List
 } from "lucide-react";
 import { getListings } from "@/lib/data/mock-db";
 
 const filters = {
   crops: ["All", "Tomato", "Rice", "Wheat", "Onion", "Potato"],
-  quality: ["All Grades", "Grade A", "Grade B", "Grade C"],
   sort: ["Recommended", "Price: Low to High", "Price: High to Low", "Highest Trust"]
 };
 
@@ -42,7 +41,7 @@ export default function BuyerPage() {
       {/* Navigation */}
       <header className="nav-header">
         <div className="nav-container">
-          <Link href="/" className="nav-brand">
+          <Link href="/" className="nav-brand" data-voice="go home open home page">
             <div className="nav-logo" style={{ background: "#CCFF00", color: "#111812" }}>KV</div>
             <div>
               <div className="nav-title">Buyer Marketplace</div>
@@ -51,12 +50,16 @@ export default function BuyerPage() {
           </Link>
 
           <nav className="nav-links">
-            <Link href="/buyer" className="nav-link active">Marketplace</Link>
-            <Link href="/farmer" className="nav-link">Farmer View</Link>
+            <Link href="/buyer" className="nav-link active" data-voice="open buyer page buyer marketplace">
+              Marketplace
+            </Link>
+            <Link href="/farmer" className="nav-link" data-voice="open farmer page farmer dashboard">
+              Farmer View
+            </Link>
           </nav>
 
           <div className="nav-actions">
-            <Link href="/" className="btn btn-secondary btn-sm">
+            <Link href="/" className="btn btn-secondary btn-sm" data-voice="switch role change role go home">
               <ArrowLeft size={16} />
               Switch Role
             </Link>
@@ -108,6 +111,9 @@ export default function BuyerPage() {
                   onChange={e => setSearchQuery(e.target.value)}
                   style={{ paddingLeft: 48 }}
                   data-testid="search-input"
+                  name="search"
+                  id="buyer-search"
+                  aria-label="search crops"
                 />
               </div>
             </div>
@@ -120,6 +126,8 @@ export default function BuyerPage() {
                 value={selectedCrop}
                 onChange={e => setSelectedCrop(e.target.value)}
                 data-testid="filter-crop"
+                data-voice="select crop choose crop filter crop"
+                aria-label="crop filter"
               >
                 {filters.crops.map(crop => (
                   <option key={crop} value={crop}>{crop}</option>
@@ -130,7 +138,7 @@ export default function BuyerPage() {
             {/* Sort */}
             <div className="input-group" style={{ flex: "0 1 180px" }}>
               <label className="input-label">Sort By</label>
-              <select className="input select" data-testid="filter-sort">
+              <select className="input select" data-testid="filter-sort" data-voice="sort results choose sort filter sort" aria-label="sort results">
                 {filters.sort.map(s => (
                   <option key={s}>{s}</option>
                 ))}
@@ -142,12 +150,14 @@ export default function BuyerPage() {
               <button 
                 className={`btn btn-icon ${viewMode === "grid" ? "btn-primary" : "btn-secondary"}`}
                 onClick={() => setViewMode("grid")}
+                data-voice="grid view card view"
               >
                 <Grid3X3 size={18} />
               </button>
               <button 
                 className={`btn btn-icon ${viewMode === "list" ? "btn-primary" : "btn-secondary"}`}
                 onClick={() => setViewMode("list")}
+                data-voice="list view row view"
               >
                 <List size={18} />
               </button>
@@ -197,19 +207,40 @@ export default function BuyerPage() {
           </div>
         )}
       </main>
-
-      {/* Voice FAB */}
-      <button className="voice-fab" aria-label="Voice command">
-        <Mic size={28} />
-      </button>
     </div>
   );
 }
 
 function ProductCard({ listing, viewMode }: { listing: any; viewMode: "grid" | "list" }) {
+  const router = useRouter();
+  const listingHref = `/listing/${listing.id}`;
+  const roomHref = `/call/${listing.liveRoomId || `room-${listing.id}`}`;
+
+  const openListing = () => {
+    router.push(listingHref);
+  };
+
+  const openListingFromKeyboard = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openListing();
+    }
+  };
+
+  const stopCardClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    event.stopPropagation();
+  };
+
   return (
-    <Link href={`/listing/${listing.id}`} data-testid={`listing-${listing.id}`}>
-      <div className="product-card" style={viewMode === "list" ? { flexDirection: "row" } : undefined}>
+    <div
+      data-testid={`listing-${listing.id}`}
+      data-voice={`view ${listing.crop.toLowerCase()} listing open ${listing.crop.toLowerCase()} details view details`}
+      role="button"
+      tabIndex={0}
+      onClick={openListing}
+      onKeyDown={openListingFromKeyboard}
+    >
+      <div className="product-card" style={viewMode === "list" ? { flexDirection: "row", cursor: "pointer" } : { cursor: "pointer" }}>
         {viewMode === "list" && (
           <div style={{ width: 200, flexShrink: 0 }}>
             <div className="product-image" style={{ aspectRatio: "4/3" }}>
@@ -274,15 +305,27 @@ function ProductCard({ listing, viewMode }: { listing: any; viewMode: "grid" | "
           )}
 
           <div className="product-actions">
-            <button className="btn btn-secondary" style={{ flex: 1 }}>
+            <Link
+              href={roomHref}
+              className="btn btn-secondary"
+              style={{ flex: 1 }}
+              data-voice={`verify ${listing.crop.toLowerCase()} open video room verify live video call call buyer connect buyer`}
+              onClick={stopCardClick}
+            >
               <Video size={16} /> Verify
-            </button>
-            <button className="btn btn-primary" style={{ flex: 1 }}>
+            </Link>
+            <Link
+              href={listingHref}
+              className="btn btn-primary"
+              style={{ flex: 1 }}
+              data-voice={`view ${listing.crop.toLowerCase()} details open listing detail page`}
+              onClick={stopCardClick}
+            >
               Details <ArrowRight size={16} />
-            </button>
+            </Link>
           </div>
         </div>
       </div>
-    </Link>
+    </div>
   );
 }

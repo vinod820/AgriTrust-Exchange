@@ -15,7 +15,7 @@ import {
   Globe,
   Lock
 } from "lucide-react";
-import Image from "next/image";
+import { useVoice } from "@/components/voice/VoiceProvider";
 
 const roles = [
   {
@@ -70,8 +70,9 @@ const stats = [
 export default function HomePage() {
   const router = useRouter();
   const [selectedRole, setSelectedRole] = useState("farmer");
+  const { startListening } = useVoice();
 
-  const activeRole = roles.find(r => r.id === selectedRole) || roles[0];
+  const activeRole = roles.find((role) => role.id === selectedRole) || roles[0];
 
   const handleContinue = () => {
     router.push(activeRole.href);
@@ -118,11 +119,17 @@ export default function HomePage() {
                 className="btn btn-accent btn-lg"
                 onClick={handleContinue}
                 data-testid="hero-get-started"
+                data-voice={`get started continue open ${activeRole.label.toLowerCase()} page continue as ${activeRole.label.toLowerCase()}`}
               >
                 Get Started
                 <ArrowRight size={20} />
               </button>
-              <button className="btn btn-secondary btn-lg" style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.3)", color: "white" }}>
+              <button
+                className="btn btn-secondary btn-lg"
+                style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.3)", color: "white" }}
+                onClick={startListening}
+                data-voice="try voice demo start voice command start listening"
+              >
                 <Mic size={20} />
                 Try Voice Demo
               </button>
@@ -193,6 +200,7 @@ export default function HomePage() {
                   transition={{ delay: index * 0.1 }}
                   onClick={() => setSelectedRole(role.id)}
                   data-testid={`role-card-${role.id}`}
+                  data-voice={`choose ${role.label.toLowerCase()} select ${role.label.toLowerCase()} continue as ${role.label.toLowerCase()} open ${role.label.toLowerCase()} page`}
                   className="card card-interactive"
                   style={{
                     cursor: "pointer",
@@ -251,6 +259,7 @@ export default function HomePage() {
               className="btn btn-primary btn-lg"
               onClick={handleContinue}
               data-testid="continue-btn"
+              data-voice={`continue as ${activeRole.label.toLowerCase()} open ${activeRole.label.toLowerCase()} page`}
             >
               Continue as {activeRole.label}
               <ArrowRight size={20} />
@@ -404,6 +413,7 @@ export default function HomePage() {
                 className="btn btn-accent btn-lg"
                 onClick={handleContinue}
                 data-testid="cta-get-started"
+                data-voice={`start now continue continue as ${activeRole.label.toLowerCase()} open ${activeRole.label.toLowerCase()} page`}
               >
                 Start Now — It's Free
                 <ArrowRight size={20} />

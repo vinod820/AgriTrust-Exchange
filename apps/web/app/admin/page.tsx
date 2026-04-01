@@ -13,8 +13,7 @@ import {
   Clock,
   Wallet,
   FileWarning,
-  ArrowLeft,
-  Mic
+  ArrowLeft
 } from "lucide-react";
 import { getListings } from "@/lib/data/mock-db";
 
@@ -39,7 +38,7 @@ export default function AdminPage() {
       {/* Navigation */}
       <header className="nav-header">
         <div className="nav-container">
-          <Link href="/" className="nav-brand">
+          <Link href="/" className="nav-brand" data-voice="go home open home page">
             <div className="nav-logo" style={{ background: "#E25C3D", color: "#FDFBF7" }}>KV</div>
             <div>
               <div className="nav-title">Admin Control</div>
@@ -48,12 +47,16 @@ export default function AdminPage() {
           </Link>
 
           <nav className="nav-links">
-            <Link href="/admin" className="nav-link active">Dashboard</Link>
-            <Link href="/buyer" className="nav-link">Marketplace</Link>
+            <Link href="/admin" className="nav-link active" data-voice="open admin page admin dashboard control center">
+              Dashboard
+            </Link>
+            <Link href="/buyer" className="nav-link" data-voice="open buyer page open marketplace">
+              Marketplace
+            </Link>
           </nav>
 
           <div className="nav-actions">
-            <Link href="/" className="btn btn-secondary btn-sm">
+            <Link href="/" className="btn btn-secondary btn-sm" data-voice="switch role change role go home">
               <ArrowLeft size={16} />
               Switch Role
             </Link>
@@ -149,7 +152,7 @@ export default function AdminPage() {
                   <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
                     {alert.time}
                   </div>
-                  <button className="btn btn-secondary btn-sm">
+                  <button className="btn btn-secondary btn-sm" data-voice={`review alert ${alert.type.toLowerCase()} ${alert.listing.toLowerCase()}`}>
                     <Eye size={14} /> Review
                   </button>
                 </motion.div>
@@ -251,10 +254,6 @@ export default function AdminPage() {
         </div>
       </main>
 
-      {/* Voice FAB */}
-      <button className="voice-fab" aria-label="Voice command">
-        <Mic size={28} />
-      </button>
     </div>
   );
 }

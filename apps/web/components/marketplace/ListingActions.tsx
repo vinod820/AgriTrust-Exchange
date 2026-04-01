@@ -80,16 +80,16 @@ export function ListingActions({ listing }: { listing: Listing }) {
         </div>
       </div>
       <div className="button-row">
-        <button className="button" onClick={runAiAnalysis}>
+        <button className="button" onClick={runAiAnalysis} data-voice="run ai analysis analyze crop ai check">
           Run AI analysis
         </button>
-        <button className="ghost-button" onClick={lockEscrow}>
+        <button className="ghost-button" onClick={lockEscrow} data-voice="lock escrow secure payment hold money">
           Lock escrow
         </button>
-        <Link className="ghost-button" href={`/call/${listing.liveRoomId ?? `room-${listing.id}`}`}>
+        <Link className="ghost-button" href={`/call/${listing.liveRoomId ?? `room-${listing.id}`}`} data-voice="open video room join call verify live call buyer connect buyer buyer video call">
           Open video room
         </Link>
-        <Link className="ghost-button" href={`/trace/${listing.batchId}`}>
+        <Link className="ghost-button" href={`/trace/${listing.batchId}`} data-voice="open trace page trace verify check supply chain">
           Open trace page
         </Link>
       </div>

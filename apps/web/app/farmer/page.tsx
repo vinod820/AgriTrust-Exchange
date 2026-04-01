@@ -1,30 +1,25 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Mic,
-  MicOff,
   Package,
   Wallet,
   TrendingUp,
   PlusCircle,
-  ChevronRight,
   Leaf,
   BarChart3,
   Phone,
   MapPin,
   Star,
-  Clock,
   CheckCircle2,
-  AlertCircle,
-  ArrowLeft,
-  X,
-  Volume2
+  ArrowLeft
 } from "lucide-react";
 import { getListings } from "@/lib/data/mock-db";
+import { useVoice } from "@/components/voice/VoiceProvider";
 
 const sections = [
   { id: "overview", label: "Overview", icon: BarChart3 },
@@ -34,97 +29,14 @@ const sections = [
   { id: "wallet", label: "Wallet", icon: Wallet }
 ];
 
-const VOICE_COMMANDS: Record<string, { action: string; route?: string; response: string }> = {
-  "hello": { action: "greet", response: "Hello! Welcome to KrishiVoice Chain. How can I help you today?" },
-  "hi": { action: "greet", response: "Hi there! Ready to help you with your farming needs." },
-  "go to buyer": { action: "navigate", route: "/buyer", response: "Opening the Buyer Marketplace." },
-  "open marketplace": { action: "navigate", route: "/buyer", response: "Opening the Buyer Marketplace." },
-  "sell crop": { action: "navigate", route: "/farmer?section=sell", response: "Opening crop registration." },
-  "check inventory": { action: "navigate", route: "/farmer?section=inventory", response: "Opening your inventory." },
-  "connect wallet": { action: "navigate", route: "/farmer?section=wallet", response: "Opening wallet connection." },
-  "check price": { action: "price", response: "Current prices: Tomato Rs35/kg, Rice Rs42/kg, Wheat Rs28/kg." },
-  "help": { action: "help", response: "Say: sell crop, check price, go to buyer market, check inventory." },
-};
-
 export default function FarmerPage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const activeSection = searchParams.get("section") || "overview";
-  
-  // Voice state
-  const [isListening, setIsListening] = useState(false);
-  const [transcript, setTranscript] = useState("");
-  const [response, setResponse] = useState("");
-  const [showVoicePanel, setShowVoicePanel] = useState(false);
+  const { isListening, transcript, response, startListening, stopListening } = useVoice();
   
   const myListings = getListings().slice(0, 3);
   const totalKg = myListings.reduce((sum, l) => sum + l.quantityKg, 0);
   const earnings = myListings.reduce((sum, l) => sum + (l.quantityKg * l.pricePerKg * 0.3), 0);
-
-  const speak = useCallback((text: string) => {
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1;
-      utterance.lang = "en-IN";
-      window.speechSynthesis.speak(utterance);
-    }
-  }, []);
-
-  const processCommand = useCallback((text: string) => {
-    let matchedCommand = null;
-    let matchedKey = "";
-    
-    for (const key of Object.keys(VOICE_COMMANDS)) {
-      if (text.includes(key)) {
-        if (!matchedKey || key.length > matchedKey.length) {
-          matchedCommand = VOICE_COMMANDS[key];
-          matchedKey = key;
-        }
-      }
-    }
-
-    if (matchedCommand) {
-      setResponse(matchedCommand.response);
-      speak(matchedCommand.response);
-      
-      if (matchedCommand.route) {
-        setTimeout(() => router.push(matchedCommand.route!), 1000);
-      }
-    } else {
-      const defaultResponse = `I heard "${text}". Try saying "help" for commands.`;
-      setResponse(defaultResponse);
-      speak(defaultResponse);
-    }
-  }, [router, speak]);
-
-  const startListening = useCallback(() => {
-    if (typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window)) {
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      const recognition = new SpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = true;
-      recognition.lang = "en-IN";
-
-      recognition.onresult = (event: any) => {
-        const current = event.resultIndex;
-        const transcriptText = event.results[current][0].transcript.toLowerCase().trim();
-        setTranscript(transcriptText);
-
-        if (event.results[current].isFinal) {
-          processCommand(transcriptText);
-        }
-      };
-
-      recognition.onend = () => setIsListening(false);
-      recognition.onerror = () => setIsListening(false);
-
-      setTranscript("");
-      setResponse("");
-      setShowVoicePanel(true);
-      setIsListening(true);
-      recognition.start();
-    }
-  }, [processCommand]);
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg-main)" }}>
@@ -140,12 +52,21 @@ export default function FarmerPage() {
           </Link>
 
           <nav className="nav-links" data-testid="nav-links">
-            <Link href="/farmer" className="nav-link active">Dashboard</Link>
-            <Link href="/buyer" className="nav-link">Marketplace</Link>
+            <Link href="/farmer" className="nav-link active" data-voice="open farmer page farmer dashboard">
+              Dashboard
+            </Link>
+            <Link href="/buyer" className="nav-link" data-voice="open buyer page open marketplace buyer marketplace">
+              Marketplace
+            </Link>
           </nav>
 
           <div className="nav-actions">
-            <Link href="/" className="btn btn-secondary btn-sm" data-testid="switch-role-btn">
+            <Link
+              href="/"
+              className="btn btn-secondary btn-sm"
+              data-testid="switch-role-btn"
+              data-voice="switch role change role go home choose role"
+            >
               <ArrowLeft size={16} />
               Switch Role
             </Link>
@@ -167,13 +88,19 @@ export default function FarmerPage() {
           <div style={{ display: "flex", gap: "var(--space-md)" }}>
             <button 
               className="btn btn-secondary"
-              onClick={startListening}
+              onClick={isListening ? stopListening : startListening}
               data-testid="voice-btn-header"
+              data-voice="start voice command stop voice command voice help"
             >
               <Mic size={18} />
               {isListening ? "Listening..." : "Voice Command"}
             </button>
-            <Link href="/farmer?section=sell" className="btn btn-primary" data-testid="new-listing-btn">
+            <Link
+              href="/farmer?section=sell"
+              className="btn btn-primary"
+              data-testid="new-listing-btn"
+              data-voice="create listing add listing register crop sell crop"
+            >
               <PlusCircle size={18} />
               New Listing
             </Link>
@@ -286,6 +213,7 @@ export default function FarmerPage() {
                 href={`/farmer?section=${section.id}`}
                 className={`tab ${isActive ? "active" : ""}`}
                 data-testid={`tab-${section.id}`}
+                data-voice={`open ${section.label.toLowerCase()} section ${section.label.toLowerCase()} tab`}
               >
                 <Icon size={18} style={{ marginRight: 8 }} />
                 {section.label}
@@ -312,62 +240,6 @@ export default function FarmerPage() {
         </AnimatePresence>
       </main>
 
-      {/* Voice FAB */}
-      <button
-        data-testid="voice-fab"
-        className={`voice-fab ${isListening ? "listening" : ""}`}
-        onClick={startListening}
-        aria-label={isListening ? "Stop listening" : "Start voice command"}
-      >
-        {isListening ? <MicOff size={28} /> : <Mic size={28} />}
-      </button>
-
-      {/* Voice Response Panel */}
-      {showVoicePanel && (
-        <div className="voice-response fade-in" data-testid="voice-panel">
-          <div className="voice-response-header">
-            <div className="voice-status">
-              {isListening && <span className="voice-status-dot" />}
-              <span>{isListening ? "Listening..." : "Voice Assistant"}</span>
-            </div>
-            <button 
-              className="btn-ghost btn-icon"
-              onClick={() => setShowVoicePanel(false)}
-              style={{ width: 32, height: 32, borderRadius: "var(--radius-sm)" }}
-            >
-              <X size={18} />
-            </button>
-          </div>
-
-          {transcript && (
-            <div style={{ marginBottom: "var(--space-md)" }}>
-              <span style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>You said:</span>
-              <p style={{ margin: "4px 0 0", fontWeight: 500 }}>{transcript}</p>
-            </div>
-          )}
-
-          {response && (
-            <div style={{ 
-              padding: "12px", 
-              background: "var(--bg-secondary)", 
-              borderRadius: "var(--radius-md)",
-              marginBottom: "var(--space-md)"
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
-                <Volume2 size={16} style={{ color: "var(--brand-primary)" }} />
-                <span style={{ fontSize: "0.875rem", color: "var(--text-muted)" }}>Response:</span>
-              </div>
-              <p style={{ margin: 0, color: "var(--text-primary)" }}>{response}</p>
-            </div>
-          )}
-
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-sm)" }}>
-            <span className="badge">sell crop</span>
-            <span className="badge">check price</span>
-            <span className="badge">open marketplace</span>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -388,6 +260,7 @@ function OverviewSection({ listings }: { listings: any[] }) {
               key={action.label}
               href={action.href}
               className="card card-interactive"
+              data-voice={`${action.label.toLowerCase()} ${action.desc.toLowerCase()}`}
               style={{ display: "flex", alignItems: "flex-start", gap: "var(--space-md)" }}
             >
               <div style={{
@@ -433,14 +306,6 @@ function OverviewSection({ listings }: { listings: any[] }) {
 }
 
 function SellCropSection() {
-  const [formData, setFormData] = useState({
-    crop: "",
-    quantity: "",
-    price: "",
-    location: "",
-    description: ""
-  });
-
   return (
     <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "var(--space-xl)" }}>
       <div className="card card-lg">
@@ -448,7 +313,7 @@ function SellCropSection() {
         <form style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-lg)" }}>
           <div className="input-group">
             <label className="input-label">Crop Type</label>
-            <select className="input select" data-testid="input-crop">
+            <select className="input select" data-testid="input-crop" data-voice="select crop choose crop filter crop" aria-label="crop type">
               <option value="">Select crop</option>
               <option value="tomato">Tomato</option>
               <option value="rice">Rice</option>
@@ -459,26 +324,26 @@ function SellCropSection() {
 
           <div className="input-group">
             <label className="input-label">Quantity (kg)</label>
-            <input type="number" className="input" placeholder="e.g., 500" data-testid="input-quantity" />
+            <input type="number" className="input" placeholder="e.g., 500" data-testid="input-quantity" name="quantity" aria-label="listing quantity" />
           </div>
 
           <div className="input-group">
             <label className="input-label">Price per kg (₹)</label>
-            <input type="number" className="input" placeholder="e.g., 35" data-testid="input-price" />
+            <input type="number" className="input" placeholder="e.g., 35" data-testid="input-price" name="price" aria-label="price per kg" />
           </div>
 
           <div className="input-group">
             <label className="input-label">Location</label>
-            <input type="text" className="input" placeholder="e.g., Bangalore Rural" data-testid="input-location" />
+            <input type="text" className="input" placeholder="e.g., Bangalore Rural" data-testid="input-location" name="location" aria-label="farm location" />
           </div>
 
           <div className="input-group" style={{ gridColumn: "1 / -1" }}>
             <label className="input-label">Description</label>
-            <textarea className="input" placeholder="Describe your crop quality..." data-testid="input-description" />
+            <textarea className="input" placeholder="Describe your crop quality..." data-testid="input-description" name="crop-description" aria-label="crop description" />
           </div>
 
           <div style={{ gridColumn: "1 / -1", display: "flex", gap: "var(--space-md)" }}>
-            <button type="button" className="btn btn-primary" data-testid="submit-listing">
+            <button type="button" className="btn btn-primary" data-testid="submit-listing" data-voice="create listing submit listing register crop add crop listing">
               <PlusCircle size={18} />
               Create Listing
             </button>
@@ -521,6 +386,7 @@ function VoiceSection({ isListening, transcript, response, startListening }: any
           onClick={startListening}
           whileTap={{ scale: 0.95 }}
           data-testid="voice-main-btn"
+          data-voice="start voice command voice help start listening"
         >
           <Mic size={48} />
         </motion.button>
@@ -596,7 +462,7 @@ function InventorySection({ listings }: { listings: any[] }) {
     <div className="card card-lg">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-lg)" }}>
         <h3>My Inventory</h3>
-        <Link href="/farmer?section=sell" className="btn btn-primary btn-sm">
+        <Link href="/farmer?section=sell" className="btn btn-primary btn-sm" data-voice="add new create listing register crop">
           <PlusCircle size={16} />
           Add New
         </Link>
@@ -649,8 +515,10 @@ function InventorySection({ listings }: { listings: any[] }) {
             </div>
 
             <div style={{ display: "flex", gap: "var(--space-sm)" }}>
-              <Link href={`/listing/${listing.id}`} className="btn btn-secondary btn-sm">View</Link>
-              <Link href={`/call/${listing.liveRoomId || `room-${listing.id}`}`} className="btn btn-primary btn-sm">
+              <Link href={`/listing/${listing.id}`} className="btn btn-secondary btn-sm" data-voice={`view ${listing.crop.toLowerCase()} listing open ${listing.crop.toLowerCase()} details`}>
+                View
+              </Link>
+              <Link href={`/call/${listing.liveRoomId || `room-${listing.id}`}`} className="btn btn-primary btn-sm" data-voice={`open video room join call verify ${listing.crop.toLowerCase()} call buyer connect buyer video call`}>
                 <Phone size={14} />
               </Link>
             </div>
@@ -694,6 +562,7 @@ function WalletSection() {
             style={{ width: "100%" }}
             onClick={connectWallet}
             data-testid="connect-wallet-btn"
+            data-voice="connect wallet open metamask wallet login wallet"
           >
             <Wallet size={18} />
             Connect MetaMask

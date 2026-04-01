@@ -53,10 +53,10 @@ export function ListingCard({ listing }: { listing: Listing }) {
         </div>
 
         <div className="listing-actions">
-          <Link href={`/listing/${listing.id}`} className="button">
+          <Link href={`/listing/${listing.id}`} className="button" data-voice={`view ${listing.crop.toLowerCase()} details open listing detail page`}>
             View details
           </Link>
-          <Link href={`/call/${listing.liveRoomId ?? `room-${listing.id}`}`} className="ghost-button">
+          <Link href={`/call/${listing.liveRoomId ?? `room-${listing.id}`}`} className="ghost-button" data-voice={`verify ${listing.crop.toLowerCase()} live open video room join call call buyer connect buyer video call`}>
             Verify live
           </Link>
         </div>

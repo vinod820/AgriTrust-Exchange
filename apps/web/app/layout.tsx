@@ -1,5 +1,6 @@
 import "./globals.css";
 import type { Metadata } from "next";
+import { VoiceProvider } from "@/components/voice/VoiceProvider";
 
 export const metadata: Metadata = {
   title: "KrishiVoice Chain | Farm Meets Future",
@@ -18,7 +19,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body>
-        {children}
+        <VoiceProvider>{children}</VoiceProvider>
       </body>
     </html>
   );

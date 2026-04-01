@@ -260,7 +260,7 @@ export default function CallPage() {
       {/* Header */}
       <header className="nav-header">
         <div className="nav-container">
-          <Link href="/" className="nav-brand">
+          <Link href="/" className="nav-brand" data-voice="go home open home page">
             <div className="nav-logo">KV</div>
             <div>
               <div className="nav-title">Video Verification</div>
@@ -269,7 +269,7 @@ export default function CallPage() {
           </Link>
 
           <div className="nav-actions">
-            <Link href="/buyer" className="btn btn-secondary btn-sm">
+            <Link href="/buyer" className="btn btn-secondary btn-sm" data-voice="back to marketplace open buyer page">
               <ArrowLeft size={16} />
               Back to Marketplace
             </Link>
@@ -395,6 +395,7 @@ export default function CallPage() {
                     onClick={previewDevices}
                     disabled={preparingDevices || deviceReady}
                     data-testid="preview-btn"
+                    data-voice="preview camera start camera prepare devices video call start video call camera on camera ons open camera connect camera"
                   >
                     <Video size={18} />
                     {preparingDevices ? "Starting..." : deviceReady ? "Camera Ready" : "Preview Camera"}
@@ -404,6 +405,7 @@ export default function CallPage() {
                     onClick={joinRoom}
                     disabled={!deviceReady}
                     data-testid="join-btn"
+                    data-voice="join room start call enter room connect buyer call buyer connect call"
                   >
                     <Phone size={18} />
                     Join Room
@@ -415,6 +417,7 @@ export default function CallPage() {
                     className={`video-control-btn ${muted ? "btn-primary" : ""}`}
                     onClick={toggleMute}
                     title={muted ? "Unmute" : "Mute"}
+                    data-voice={muted ? "unmute turn microphone on" : "mute turn microphone off"}
                   >
                     {muted ? <MicOff size={22} /> : <Mic size={22} />}
                   </button>
@@ -422,6 +425,7 @@ export default function CallPage() {
                     className={`video-control-btn ${!cameraOn ? "btn-primary" : ""}`}
                     onClick={toggleCamera}
                     title={cameraOn ? "Turn Off Camera" : "Turn On Camera"}
+                    data-voice={cameraOn ? "camera off turn camera off stop camera video off" : "camera on camera ons turn camera on start camera video on"}
                   >
                     {cameraOn ? <Video size={22} /> : <VideoOff size={22} />}
                   </button>
@@ -430,6 +434,7 @@ export default function CallPage() {
                     onClick={endCall}
                     title="End Call"
                     data-testid="end-call-btn"
+                    data-voice="end call hang up leave room"
                   >
                     <PhoneOff size={22} />
                   </button>
@@ -464,6 +469,7 @@ export default function CallPage() {
                 onClick={copyInviteLink}
                 style={{ width: "100%" }}
                 data-testid="copy-link-btn"
+                data-voice="copy invite link share room link"
               >
                 {copied ? <Check size={18} /> : <Copy size={18} />}
                 {copied ? "Link Copied!" : "Copy Invite Link"}

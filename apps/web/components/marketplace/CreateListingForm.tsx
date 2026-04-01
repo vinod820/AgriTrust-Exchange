@@ -69,30 +69,30 @@ export function CreateListingForm() {
       <form onSubmit={submitForm} className="field-grid">
         <label className="field">
           Crop
-          <input value={form.crop} onChange={(event) => setForm({ ...form, crop: event.target.value })} placeholder="Tomato" required />
+          <input value={form.crop} onChange={(event) => setForm({ ...form, crop: event.target.value })} placeholder="Tomato" required name="crop" aria-label="crop" />
         </label>
         <label className="field">
           Farm location
-          <input value={form.location} onChange={(event) => setForm({ ...form, location: event.target.value })} placeholder="Nashik, Maharashtra" required />
+          <input value={form.location} onChange={(event) => setForm({ ...form, location: event.target.value })} placeholder="Nashik, Maharashtra" required name="location" aria-label="farm location" />
         </label>
         <label className="field">
           Quantity (kg)
-          <input value={form.quantityKg} onChange={(event) => setForm({ ...form, quantityKg: event.target.value })} type="number" min="1" required />
+          <input value={form.quantityKg} onChange={(event) => setForm({ ...form, quantityKg: event.target.value })} type="number" min="1" required name="quantity" aria-label="quantity" />
         </label>
         <label className="field">
           Price per kg
-          <input value={form.pricePerKg} onChange={(event) => setForm({ ...form, pricePerKg: event.target.value })} type="number" min="1" required />
+          <input value={form.pricePerKg} onChange={(event) => setForm({ ...form, pricePerKg: event.target.value })} type="number" min="1" required name="price" aria-label="price per kg" />
         </label>
         <label className="field">
           Harvest date
-          <input value={form.harvestDate} onChange={(event) => setForm({ ...form, harvestDate: event.target.value })} type="date" required />
+          <input value={form.harvestDate} onChange={(event) => setForm({ ...form, harvestDate: event.target.value })} type="date" required name="harvest-date" aria-label="harvest date" />
         </label>
         <label className="field" style={{ gridColumn: "1 / -1" }}>
           Description
-          <textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Fresh lot, same-day sorting, ready for video verification." required />
+          <textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Fresh lot, same-day sorting, ready for video verification." required name="description" aria-label="description" />
         </label>
         <div className="form-footer">
-          <button className="button" type="submit">
+          <button className="button" type="submit" data-voice="create listing add listing sell crop register crop">
             Create Listing
           </button>
           <span className="muted">{status}</span>

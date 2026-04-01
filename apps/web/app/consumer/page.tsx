@@ -13,8 +13,7 @@ import {
   Scan,
   Star,
   Lock,
-  ArrowLeft,
-  Mic
+  ArrowLeft
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
@@ -33,7 +32,7 @@ export default function ConsumerPage() {
       {/* Navigation */}
       <header className="nav-header">
         <div className="nav-container">
-          <Link href="/" className="nav-brand">
+          <Link href="/" className="nav-brand" data-voice="go home open home page">
             <div className="nav-logo" style={{ background: "#00C853", color: "#FDFBF7" }}>KV</div>
             <div>
               <div className="nav-title">Consumer Portal</div>
@@ -42,12 +41,16 @@ export default function ConsumerPage() {
           </Link>
 
           <nav className="nav-links">
-            <Link href="/consumer" className="nav-link active">Verify</Link>
-            <Link href="/buyer" className="nav-link">Browse</Link>
+            <Link href="/consumer" className="nav-link active" data-voice="open consumer page consumer verify page">
+              Verify
+            </Link>
+            <Link href="/buyer" className="nav-link" data-voice="open buyer page browse marketplace">
+              Browse
+            </Link>
           </nav>
 
           <div className="nav-actions">
-            <Link href="/" className="btn btn-secondary btn-sm">
+            <Link href="/" className="btn btn-secondary btn-sm" data-voice="switch role change role go home">
               <ArrowLeft size={16} />
               Switch Role
             </Link>
@@ -103,18 +106,22 @@ export default function ConsumerPage() {
               value={batchId}
               onChange={e => setBatchId(e.target.value)}
               data-testid="batch-input"
+              name="batch-search"
+              id="batch-search"
+              aria-label="batch search"
             />
             <button 
               className="btn btn-primary"
               onClick={handleScan}
               data-testid="scan-btn"
+              data-voice="verify batch search batch trace product check batch"
             >
               <Search size={18} />
               Verify
             </button>
           </div>
 
-          <button className="btn btn-secondary" style={{ marginTop: "var(--space-md)" }}>
+          <button className="btn btn-secondary" style={{ marginTop: "var(--space-md)" }} data-voice="open camera to scan scan qr open scanner">
             <Scan size={18} />
             Open Camera to Scan
           </button>
@@ -148,17 +155,13 @@ export default function ConsumerPage() {
                 setShowResult(true);
               }}
               data-testid="demo-btn"
+              data-voice="view demo verify demo batch demo trace"
             >
               View Demo: BATCH-TOM-2401
             </button>
           </motion.div>
         )}
       </main>
-
-      {/* Voice FAB */}
-      <button className="voice-fab" aria-label="Voice command">
-        <Mic size={28} />
-      </button>
     </div>
   );
 }

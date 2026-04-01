@@ -76,10 +76,10 @@ export default function TracePage({ params }: { params: { batchId: string } }) {
             <p className="kicker">Next step</p>
             <h3>Continue exploring</h3>
             <div className="button-row">
-              <Link className="button" href="/buyer">
+              <Link className="button" href="/buyer" data-voice="browse marketplace open buyer page buyer marketplace">
                 Browse marketplace
               </Link>
-              <Link className="ghost-button" href="/consumer">
+              <Link className="ghost-button" href="/consumer" data-voice="open consumer view consumer page verify page">
                 Consumer view
               </Link>
             </div>
