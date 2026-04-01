@@ -1,0 +1,10 @@
+{
+  "name": "frontend",
+  "private": true,
+  "scripts": {
+    "dev": "cd /app/apps/web && /app/node_modules/.bin/next dev -p 3000",
+    "start": "cd /app/apps/web && /app/node_modules/.bin/next dev -p 3000",
+    "build": "cd /app/apps/web && /app/node_modules/.bin/next build"
+  },
+  "dependencies": {}
+}
