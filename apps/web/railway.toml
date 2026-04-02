@@ -1,6 +1,6 @@
 [build]
-buildCommand = "npm run build"
+buildCommand = "cd ../.. && npm install && npm run build --workspace apps/web"
 
 [deploy]
 startCommand = "npm start"
-preDeployCommand = ["npx prisma generate", "npx prisma db push"]
+preDeployCommand = "npx prisma generate && npx prisma db push"
