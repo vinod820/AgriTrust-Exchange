@@ -1,0 +1,412 @@
+.page {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(120, 168, 89, 0.14), transparent 30%),
+    linear-gradient(180deg, #f7fbf4 0%, var(--bg-main) 24%, var(--bg-main) 100%);
+}
+
+.headerActions {
+  flex-wrap: wrap;
+}
+
+.hero {
+  margin-bottom: var(--space-xl);
+  padding: var(--space-2xl);
+  border-radius: var(--radius-xl);
+  color: var(--text-inverse);
+  background:
+    linear-gradient(135deg, rgba(45, 90, 63, 0.98), rgba(19, 52, 33, 0.96)),
+    radial-gradient(circle at top right, rgba(255, 212, 102, 0.2), transparent 36%);
+  box-shadow: 0 24px 60px rgba(26, 46, 32, 0.18);
+}
+
+.heroGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(300px, 0.95fr);
+  gap: var(--space-xl);
+  align-items: end;
+}
+
+.eyebrow {
+  display: inline-block;
+  margin-bottom: var(--space-sm);
+  color: var(--brand-secondary);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.heroTitle {
+  margin: 0 0 var(--space-md);
+  color: var(--text-inverse);
+  font-size: clamp(2rem, 5vw, 3.3rem);
+  line-height: 1.05;
+}
+
+.heroText {
+  max-width: 720px;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.heroBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  margin-top: var(--space-lg);
+}
+
+.heroPanel {
+  padding: var(--space-lg);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: calc(var(--radius-lg) + 2px);
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
+}
+
+.heroPanelTitle {
+  margin-bottom: var(--space-md);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.heroPanelList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.heroPanelRow {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-md);
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.92rem;
+}
+
+.heroPanelRow strong {
+  color: #fff;
+  text-align: right;
+}
+
+.heroPanelNote {
+  margin: var(--space-lg) 0 0;
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 0.84rem;
+  line-height: 1.6;
+}
+
+.contentGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-xl);
+  align-items: start;
+}
+
+.callCard {
+  padding: var(--space-xl);
+  border: 1px solid rgba(26, 46, 32, 0.08);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 20px 50px rgba(26, 46, 32, 0.08);
+}
+
+.callHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+  flex-wrap: wrap;
+}
+
+.callSubtitle {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+.noticeBanner,
+.errorBanner {
+  display: flex;
+  gap: var(--space-md);
+  align-items: flex-start;
+  padding: var(--space-md);
+  margin-bottom: var(--space-lg);
+  border-radius: var(--radius-md);
+}
+
+.noticeBanner {
+  border: 1px solid rgba(45, 90, 63, 0.1);
+  background: rgba(45, 90, 63, 0.08);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.errorBanner {
+  border: 1px solid rgba(226, 92, 61, 0.16);
+  background: rgba(226, 92, 61, 0.1);
+}
+
+.bannerTitle {
+  color: var(--accent-warning);
+  font-weight: 700;
+}
+
+.bannerText {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+.stageShell {
+  padding: 12px;
+  border-radius: calc(var(--radius-lg) + 4px);
+  background:
+    radial-gradient(circle at top right, rgba(255, 212, 102, 0.14), transparent 22%),
+    linear-gradient(180deg, #163624 0%, #0d1b13 100%);
+  border: 1px solid rgba(26, 46, 32, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.stageHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-md);
+  padding: 4px 4px 12px;
+  flex-wrap: wrap;
+}
+
+.stageLabel {
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.stageTitle {
+  color: #fff;
+  font-size: 1.02rem;
+  font-weight: 700;
+}
+
+.meetingFrame {
+  width: 100%;
+  min-height: min(78vh, 860px);
+  height: min(78vh, 860px);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: calc(var(--radius-lg) - 2px);
+  background: #09110c;
+}
+
+.controlDock {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-sm);
+  margin-top: var(--space-lg);
+  padding: var(--space-md);
+  border: 1px solid rgba(26, 46, 32, 0.08);
+  border-radius: var(--radius-lg);
+  background: rgba(26, 46, 32, 0.03);
+}
+
+.supportText {
+  margin: var(--space-md) 0 0;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+.sidebar {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-lg);
+}
+
+.sideCard {
+  padding: var(--space-lg);
+  border: 1px solid rgba(26, 46, 32, 0.08);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 16px 38px rgba(26, 46, 32, 0.06);
+}
+
+.sideText {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+.sideHint {
+  margin: 0 0 var(--space-md);
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+.linkBox {
+  display: block;
+  margin: var(--space-md) 0;
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.74rem;
+  line-height: 1.7;
+  word-break: break-all;
+  color: var(--brand-primary);
+  border: 1px solid rgba(45, 90, 63, 0.12);
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.linkBox:hover {
+  background: rgba(45, 90, 63, 0.06);
+  border-color: rgba(45, 90, 63, 0.22);
+}
+
+.sideActions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.detailList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  margin-bottom: var(--space-md);
+}
+
+.detailRow {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-md);
+  font-size: 0.9rem;
+}
+
+.detailRow span {
+  color: var(--text-secondary);
+}
+
+.detailRow strong {
+  color: var(--text-primary);
+  text-align: right;
+}
+
+.stepList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.stepItem {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+}
+
+.stepNumber {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: rgba(45, 90, 63, 0.12);
+  color: var(--brand-primary);
+  font-weight: 700;
+}
+
+.stepTitle {
+  margin-bottom: 4px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.stepDesc {
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+  line-height: 1.6;
+}
+
+.helpCard {
+  display: flex;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  border: 1px solid rgba(45, 90, 63, 0.16);
+  border-radius: calc(var(--radius-lg) + 2px);
+  background: linear-gradient(180deg, rgba(45, 90, 63, 0.08), rgba(120, 168, 89, 0.08));
+  grid-column: 1 / -1;
+}
+
+.helpTitle {
+  margin-bottom: 4px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.helpText {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+  line-height: 1.6;
+}
+
+@media (max-width: 1180px) {
+  .heroGrid,
+  .contentGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .meetingFrame {
+    min-height: 620px;
+    height: 620px;
+  }
+}
+
+@media (max-width: 720px) {
+  .hero,
+  .callCard,
+  .sideCard,
+  .helpCard {
+    padding: var(--space-lg);
+  }
+
+  .meetingFrame {
+    min-height: 520px;
+    height: 520px;
+  }
+
+  .stageHeader,
+  .callHeader,
+  .detailRow,
+  .heroPanelRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .sidebar {
+    grid-template-columns: 1fr;
+  }
+
+  .detailRow strong,
+  .heroPanelRow strong {
+    text-align: left;
+  }
+}

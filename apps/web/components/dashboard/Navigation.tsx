@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Leaf, ShoppingBag, Shield, Users, ArrowLeft, Menu, X } from "lucide-react";
 import { useState } from "react";
+import { BrandMark } from "@/components/branding/BrandMark";
 
 interface NavigationProps {
   portal: "farmer" | "buyer" | "admin" | "consumer";
@@ -57,9 +58,10 @@ export function Navigation({ portal, title, subtitle }: NavigationProps) {
       <div className="nav-container">
         {/* Brand */}
         <Link href="/" className="nav-brand" data-testid="nav-brand">
-          <div className="nav-logo" style={{ background: config.color, color: portal === "buyer" ? "#111812" : "#FDFBF7" }}>
-            KV
-          </div>
+          <BrandMark
+            className="nav-logo"
+            style={{ background: config.color, color: portal === "buyer" ? "#111812" : "#FDFBF7" }}
+          />
           <div>
             <div className="nav-title">{title}</div>
             <div className="nav-subtitle">{subtitle}</div>

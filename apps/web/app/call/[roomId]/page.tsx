@@ -1,274 +1,606 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import Peer from "simple-peer";
-import { io, Socket } from "socket.io-client";
 import {
+  AlertCircle,
+  ArrowLeft,
+  Check,
+  Copy,
+  ExternalLink,
+  MessageSquare,
   Mic,
   MicOff,
-  Video,
-  VideoOff,
-  Phone,
+  MonitorUp,
   PhoneOff,
-  Copy,
-  Check,
-  ArrowLeft,
-  Users,
   Shield,
-  AlertCircle
+  Users,
+  Video,
+  VideoOff
 } from "lucide-react";
+import { BrandMark } from "@/components/branding/BrandMark";
+import { addVerificationWithWallet, getVerificationTrustAdminAddress, getWalletAddress } from "@/lib/contracts/client";
+import type { Listing } from "@/lib/types";
+import styles from "./page.module.css";
 
-type PeerRef = {
-  id: string;
-  peer: Peer.Instance;
+type JitsiEventPayload = Record<string, unknown> | undefined;
+
+type JitsiApi = {
+  addListener: (event: string, listener: (payload?: JitsiEventPayload) => void) => void;
+  dispose: () => void;
+  executeCommand: (command: string, ...args: unknown[]) => void;
 };
+
+type JitsiApiConstructor = new (domain: string, options: Record<string, unknown>) => JitsiApi;
+
+type WindowWithJitsi = Window & {
+  JitsiMeetExternalAPI?: JitsiApiConstructor;
+};
+
+let jitsiScriptPromise: Promise<void> | null = null;
+
+function sanitizeRoomName(roomId: string) {
+  const sanitized = roomId.replace(/[^a-zA-Z0-9-_]/g, "-");
+  return `mahakrishi-${sanitized}`.slice(0, 80);
+}
+
+function buildMeetingUrl(domain: string, roomName: string) {
+  return `https://${domain}/${roomName}`;
+}
+
+function getQualityScore(listing: Listing | null) {
+  if (listing?.aiAnalysis?.confidence) {
+    return Math.max(0, Math.min(100, Math.round(listing.aiAnalysis.confidence * 100)));
+  }
+
+  if (listing?.qualityGrade === "A+") {
+    return 96;
+  }
+
+  if (listing?.qualityGrade === "A") {
+    return 88;
+  }
+
+  if (listing?.qualityGrade === "B") {
+    return 72;
+  }
+
+  return 85;
+}
+
+function loadJitsiScript(domain: string) {
+  if (typeof window === "undefined") {
+    return Promise.resolve();
+  }
+
+  if ((window as WindowWithJitsi).JitsiMeetExternalAPI) {
+    return Promise.resolve();
+  }
+
+  if (!jitsiScriptPromise) {
+    jitsiScriptPromise = new Promise<void>((resolve, reject) => {
+      const existing = document.querySelector<HTMLScriptElement>("script[data-jitsi-external-api='true']");
+      if (existing) {
+        existing.addEventListener("load", () => resolve(), { once: true });
+        existing.addEventListener(
+          "error",
+          () => {
+            jitsiScriptPromise = null;
+            reject(new Error("Jitsi Meet failed to load. Check your connection or browser privacy settings."));
+          },
+          { once: true }
+        );
+        return;
+      }
+
+      const script = document.createElement("script");
+      script.src = `https://${domain}/external_api.js`;
+      script.async = true;
+      script.dataset.jitsiExternalApi = "true";
+      script.onload = () => resolve();
+      script.onerror = () => {
+        jitsiScriptPromise = null;
+        reject(new Error("Jitsi Meet failed to load. Check your connection or browser privacy settings."));
+      };
+      document.body.appendChild(script);
+    });
+  }
+
+  return jitsiScriptPromise;
+}
+
+function getEventFlag(payload: JitsiEventPayload, key: string) {
+  return Boolean(payload && typeof payload === "object" && key in payload ? payload[key] : false);
+}
+
+function getEventText(payload: JitsiEventPayload, key: string) {
+  const value = payload && typeof payload === "object" && key in payload ? payload[key] : "";
+  return typeof value === "string" ? value : "";
+}
+
+function getErrorText(payload: JitsiEventPayload) {
+  const directMessage = getEventText(payload, "message").trim();
+  if (directMessage) {
+    return directMessage;
+  }
+
+  const details = getEventText(payload, "details").trim();
+  if (details) {
+    return details;
+  }
+
+  const name = getEventText(payload, "name").trim();
+  if (name) {
+    return name.replace(/[_-]+/g, " ");
+  }
+
+  return "";
+}
+
+function isFatalJitsiError(payload: JitsiEventPayload) {
+  const explicitFatal = getEventFlag(payload, "isFatal");
+  if (explicitFatal) {
+    return true;
+  }
+
+  const severity = `${getEventText(payload, "type")} ${getEventText(payload, "name")} ${getErrorText(payload)}`.toLowerCase();
+  return ["connection", "conference", "config", "network", "notallowederror", "notfounderror", "security"].some((term) =>
+    severity.includes(term)
+  );
+}
+
+function getVerificationRoomStatus(joined: boolean, remoteParticipants: number) {
+  if (!joined) {
+    return "Preparing room";
+  }
+
+  if (remoteParticipants > 0) {
+    return "Two-way call live";
+  }
+
+  return "Waiting for second user";
+}
+
+function canFallbackToWalletVerification(errorMessage: string) {
+  const normalized = errorMessage.toLowerCase();
+  return (
+    normalized.includes("private key") ||
+    normalized.includes("server wallet") ||
+    normalized.includes("admin wallet") ||
+    normalized.includes("only admin")
+  );
+}
+
+function isUserRejectedWalletAction(error: unknown) {
+  if (typeof error === "object" && error !== null && "code" in error && (error as { code?: unknown }).code === 4001) {
+    return true;
+  }
+
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  return message.includes("user rejected") || message.includes("user denied");
+}
 
 export default function CallPage() {
   const params = useParams();
-  const roomId = params.roomId as string;
-  
+  const roomId = String(params.roomId ?? "demo");
+  const jitsiDomain = process.env.NEXT_PUBLIC_JITSI_DOMAIN ?? "meet.jit.si";
+  const jitsiRoomName = useMemo(() => sanitizeRoomName(roomId), [roomId]);
+  const meetingUrl = useMemo(() => buildMeetingUrl(jitsiDomain, jitsiRoomName), [jitsiDomain, jitsiRoomName]);
+  const explorerBase = process.env.NEXT_PUBLIC_AMOY_EXPLORER_URL ?? "https://amoy.polygonscan.com";
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const apiRef = useRef<JitsiApi | null>(null);
+
   const [joined, setJoined] = useState(false);
-  const [connectedPeers, setConnectedPeers] = useState<string[]>([]);
+  const [remoteParticipants, setRemoteParticipants] = useState(0);
   const [muted, setMuted] = useState(false);
   const [cameraOn, setCameraOn] = useState(true);
-  const [status, setStatus] = useState("Ready to join the verification room.");
+  const [status, setStatus] = useState("Loading secure Jitsi verification room...");
   const [shareUrl, setShareUrl] = useState("");
-  const [deviceReady, setDeviceReady] = useState(false);
-  const [remoteReady, setRemoteReady] = useState(false);
-  const [preparingDevices, setPreparingDevices] = useState(false);
   const [copied, setCopied] = useState(false);
   const [errorText, setErrorText] = useState("");
-  
-  const localVideoRef = useRef<HTMLVideoElement | null>(null);
-  const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const socketRef = useRef<Socket | null>(null);
-  const peersRef = useRef<PeerRef[]>([]);
+  const [recordingLink, setRecordingLink] = useState("");
+  const [recordingStatus, setRecordingStatus] = useState("");
+  const [hadRemoteParticipant, setHadRemoteParticipant] = useState(false);
+  const [linkedListing, setLinkedListing] = useState<Listing | null>(null);
+  const [saveStatus, setSaveStatus] = useState("Finish the verification call, then save the proof to blockchain.");
+  const [isSaving, setIsSaving] = useState(false);
+  const [savedTxHash, setSavedTxHash] = useState("");
+
+  const totalParticipants = joined ? remoteParticipants + 1 : remoteParticipants;
+  const roomState = getVerificationRoomStatus(joined, remoteParticipants);
+  const canSaveVerification = Boolean(linkedListing?.onChainBatchId && hadRemoteParticipant && !savedTxHash && !isSaving);
+  const canSaveDemoVerification = Boolean(linkedListing?.onChainBatchId && !savedTxHash && !isSaving);
+  const referenceLabel = recordingLink ? "Jitsi recording link" : "Jitsi room URL";
 
   useEffect(() => {
     setShareUrl(window.location.href);
   }, []);
 
   useEffect(() => {
+    let ignore = false;
+
+    async function loadLinkedListing() {
+      try {
+        const response = await fetch("/api/listings", { cache: "no-store" });
+        if (!response.ok) {
+          return;
+        }
+
+        const listings = (await response.json()) as Listing[];
+        const matchedListing = listings.find((item) => (item.liveRoomId ?? `room-${item.id}`) === roomId) ?? null;
+
+        if (!ignore) {
+          setLinkedListing(matchedListing);
+          if (!matchedListing) {
+            setSaveStatus("This room is not linked to an on-chain listing yet.");
+          } else if (!matchedListing.onChainBatchId) {
+            setSaveStatus("This room is linked to a local-only listing, so verification cannot be saved on-chain yet.");
+          } else {
+            setSaveStatus(
+              "You can save the live verification after both users join, or use Demo Verify for a judge-friendly one-person demo."
+            );
+          }
+        }
+      } catch {
+        if (!ignore) {
+          setSaveStatus("The room opened, but the listing details could not be loaded.");
+        }
+      }
+    }
+
+    void loadLinkedListing();
+
     return () => {
-      for (const item of peersRef.current) {
-        item.peer.destroy();
-      }
-      streamRef.current?.getTracks().forEach((track) => track.stop());
-      socketRef.current?.disconnect();
+      ignore = true;
     };
-  }, []);
+  }, [roomId]);
 
-  async function attachStream(video: HTMLVideoElement | null, stream: MediaStream, mutedVideo = false) {
-    if (!video) return;
-    video.srcObject = stream;
-    video.muted = mutedVideo;
-    try {
-      await video.play();
-    } catch {}
-  }
+  useEffect(() => {
+    let disposed = false;
 
-  function getMediaErrorMessage(error: unknown) {
-    if (typeof window !== "undefined" && !window.isSecureContext) {
-      return "Camera access needs a secure page (HTTPS).";
-    }
-    if (!navigator.mediaDevices?.getUserMedia) {
-      return "This browser does not support camera access.";
-    }
-    if (error && typeof error === "object" && "name" in error) {
-      const name = String((error as { name?: string }).name);
-      if (name === "NotAllowedError" || name === "SecurityError") {
-        return "Camera permission was blocked. Allow camera and microphone access, then try again.";
+    async function bootJitsi() {
+      try {
+        setErrorText("");
+        setStatus("Loading secure Jitsi verification room...");
+        await loadJitsiScript(jitsiDomain);
+
+        if (disposed || !containerRef.current) {
+          return;
+        }
+
+        const ExternalApi = (window as WindowWithJitsi).JitsiMeetExternalAPI;
+        if (!ExternalApi) {
+          throw new Error("Jitsi Meet could not be loaded in this browser.");
+        }
+
+        containerRef.current.innerHTML = "";
+        const api = new ExternalApi(jitsiDomain, {
+          roomName: jitsiRoomName,
+          parentNode: containerRef.current,
+          width: "100%",
+          height: "100%",
+          lang: "en",
+          userInfo: {
+            displayName: "Mahakrishi Participant"
+          },
+          onload: () => {
+            setStatus("Room loaded. Allow camera and microphone if your browser asks, then start the verification call.");
+          },
+          configOverwrite: {
+            disableDeepLinking: true,
+            enableWelcomePage: false,
+            prejoinConfig: {
+              enabled: false
+            },
+            startWithAudioMuted: false,
+            startWithVideoMuted: false,
+            toolbarButtons: [
+              "microphone",
+              "camera",
+              "desktop",
+              "chat",
+              "participants-pane",
+              "tileview",
+              "settings",
+              "hangup",
+              "videoquality"
+            ]
+          },
+          interfaceConfigOverwrite: {
+            TILE_VIEW_MAX_COLUMNS: 2
+          }
+        });
+
+        apiRef.current = api;
+
+        api.addListener("videoConferenceJoined", () => {
+          setJoined(true);
+          setErrorText("");
+          setStatus("You joined the verification room. Ask the other participant to open the same invite link.");
+        });
+
+        api.addListener("videoConferenceLeft", () => {
+          setJoined(false);
+          setRemoteParticipants(0);
+          setStatus("Meeting ended. Save the verification to blockchain if the inspection is complete.");
+        });
+
+        api.addListener("readyToClose", () => {
+          setJoined(false);
+          setStatus("Jitsi closed the call window. Save the verification to blockchain if the inspection is complete.");
+        });
+
+        api.addListener("participantJoined", () => {
+          setRemoteParticipants((current) => current + 1);
+          setHadRemoteParticipant(true);
+          setErrorText("");
+          setStatus("Both participants are in the verification room now.");
+        });
+
+        api.addListener("participantLeft", () => {
+          setRemoteParticipants((current) => Math.max(0, current - 1));
+          setStatus("A participant left the room. Keep the link ready in case they need to rejoin.");
+        });
+
+        api.addListener("audioMuteStatusChanged", (payload) => {
+          setMuted(getEventFlag(payload, "muted"));
+        });
+
+        api.addListener("videoMuteStatusChanged", (payload) => {
+          setCameraOn(!getEventFlag(payload, "muted"));
+        });
+
+        api.addListener("recordingStatusChanged", (payload) => {
+          if (payload && typeof payload === "object") {
+            const isOn = Boolean("on" in payload ? payload.on : false);
+            setRecordingStatus(isOn ? "Recording is active inside Jitsi." : "Recording is currently off.");
+          }
+        });
+
+        api.addListener("recordingLinkAvailable", (payload) => {
+          const link = getEventText(payload, "link");
+          if (link) {
+            setRecordingLink(link);
+            setRecordingStatus("Recording link is available and will be used as the verification reference.");
+          }
+        });
+
+        api.addListener("cameraError", (payload) => {
+          const message = getErrorText(payload) || "Jitsi could not access the camera.";
+          setErrorText(message);
+          setStatus(message);
+        });
+
+        api.addListener("micError", (payload) => {
+          const message = getErrorText(payload) || "Jitsi could not access the microphone.";
+          setErrorText(message);
+          setStatus(message);
+        });
+
+        api.addListener("errorOccurred", (payload) => {
+          const message = getErrorText(payload);
+          if (isFatalJitsiError(payload)) {
+            const fatalMessage = message || "Jitsi could not finish preparing the room.";
+            setErrorText(fatalMessage);
+            setStatus(fatalMessage);
+            return;
+          }
+
+          if (message) {
+            setStatus(`Jitsi note: ${message}`);
+          }
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Jitsi Meet could not be started.";
+        setErrorText(message);
+        setStatus(message);
       }
-      if (name === "NotFoundError" || name === "DevicesNotFoundError") {
-        return "No camera or microphone found on this device.";
-      }
-      if (name === "NotReadableError" || name === "TrackStartError") {
-        return "Camera is busy in another app. Close it and try again.";
-      }
     }
-    return "Could not start camera and microphone.";
-  }
 
-  async function ensureLocalMedia() {
-    if (streamRef.current) return streamRef.current;
-    setPreparingDevices(true);
-    setErrorText("");
+    void bootJitsi();
 
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true
-      });
-      streamRef.current = stream;
-      await attachStream(localVideoRef.current, stream, true);
-      setDeviceReady(true);
-      setStatus("Camera and microphone ready. Click 'Join Room' when ready.");
-      return stream;
-    } catch (error) {
-      const message = getMediaErrorMessage(error);
-      setErrorText(message);
-      setStatus(message);
-      throw error;
-    } finally {
-      setPreparingDevices(false);
-    }
-  }
+    return () => {
+      disposed = true;
+      apiRef.current?.dispose();
+      apiRef.current = null;
+    };
+  }, [jitsiDomain, jitsiRoomName]);
 
-  async function previewDevices() {
-    try {
-      await ensureLocalMedia();
-    } catch {}
-  }
-
-  async function joinRoom() {
-    if (joined) return;
-
-    const signalingUrl = process.env.NEXT_PUBLIC_SIGNALING_URL ?? "http://localhost:4001";
-    let stream: MediaStream;
-
-    try {
-      stream = await ensureLocalMedia();
-    } catch {
+  async function copyInviteLink() {
+    if (!meetingUrl) {
       return;
     }
 
-    for (const item of peersRef.current) {
-      item.peer.destroy();
+    try {
+      await navigator.clipboard.writeText(meetingUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setErrorText("The invite link could not be copied from this browser.");
     }
-    peersRef.current = [];
-    socketRef.current?.disconnect();
-    setConnectedPeers([]);
-    setRemoteReady(false);
-
-    const socket = io(signalingUrl, { transports: ["websocket"] });
-    socketRef.current = socket;
-
-    socket.emit("join-room", roomId);
-    setStatus("Connecting to room... Waiting for other participant.");
-    setErrorText("");
-
-    socket.on("all-users", (users: string[]) => {
-      const peers: PeerRef[] = [];
-      for (const userId of users) {
-        const peer = createPeer(userId, socket.id ?? "", stream);
-        peers.push({ id: userId, peer });
-      }
-      peersRef.current = peers;
-      setConnectedPeers(users);
-    });
-
-    socket.on("user-joined", (payload: { callerId: string; signal: Peer.SignalData }) => {
-      const peer = addPeer(payload.signal, payload.callerId, stream);
-      peersRef.current.push({ id: payload.callerId, peer });
-      setConnectedPeers((current) => [...new Set([...current, payload.callerId])]);
-    });
-
-    socket.on("receiving-returned-signal", (payload: { id: string; signal: Peer.SignalData }) => {
-      const item = peersRef.current.find((peer) => peer.id === payload.id);
-      item?.peer.signal(payload.signal);
-    });
-
-    socket.on("connect_error", () => {
-      const message = "Could not connect to video server. Make sure the signaling service is running.";
-      setJoined(false);
-      setErrorText(message);
-      setStatus(message);
-    });
-
-    socket.on("disconnect", () => {
-      setJoined(false);
-      setRemoteReady(false);
-      setConnectedPeers([]);
-      setStatus("Connection lost. You can rejoin the room.");
-    });
-
-    setJoined(true);
-  }
-
-  function createPeer(userToSignal: string, callerId: string, stream: MediaStream) {
-    const peer = new Peer({ initiator: true, trickle: false, stream });
-    peer.on("signal", (signal) => {
-      socketRef.current?.emit("sending-signal", { userToSignal, callerId, signal });
-    });
-    peer.on("stream", (remoteStream) => {
-      void attachStream(remoteVideoRef.current, remoteStream);
-      setRemoteReady(true);
-      setStatus("Connected! You can now verify the produce together.");
-    });
-    return peer;
-  }
-
-  function addPeer(incomingSignal: Peer.SignalData, callerId: string, stream: MediaStream) {
-    const peer = new Peer({ initiator: false, trickle: false, stream });
-    peer.on("signal", (signal) => {
-      socketRef.current?.emit("returning-signal", { signal, callerId });
-    });
-    peer.on("stream", (remoteStream) => {
-      void attachStream(remoteVideoRef.current, remoteStream);
-      setRemoteReady(true);
-      setStatus("Live verification stream connected!");
-    });
-    peer.signal(incomingSignal);
-    return peer;
   }
 
   function toggleMute() {
-    const next = !muted;
-    streamRef.current?.getAudioTracks().forEach((track) => {
-      track.enabled = !next;
-    });
-    setMuted(next);
+    apiRef.current?.executeCommand("toggleAudio");
   }
 
   function toggleCamera() {
-    const next = !cameraOn;
-    streamRef.current?.getVideoTracks().forEach((track) => {
-      track.enabled = next;
-    });
-    setCameraOn(next);
+    apiRef.current?.executeCommand("toggleVideo");
   }
 
-  function endCall() {
-    for (const item of peersRef.current) {
-      item.peer.destroy();
+  function openChat() {
+    apiRef.current?.executeCommand("toggleChat");
+  }
+
+  function shareScreen() {
+    apiRef.current?.executeCommand("toggleShareScreen");
+  }
+
+  function hangup() {
+    apiRef.current?.executeCommand("hangup");
+  }
+
+  async function saveVerificationOnChain(mode: "live" | "demo" = "live") {
+    if (!linkedListing?.onChainBatchId || isSaving || savedTxHash) {
+      return;
     }
-    peersRef.current = [];
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    socketRef.current?.disconnect();
-    setJoined(false);
-    setDeviceReady(false);
-    setRemoteReady(false);
-    setConnectedPeers([]);
-    setStatus("Call ended. You can start a new session.");
-  }
 
-  async function copyInviteLink() {
-    if (!shareUrl) return;
+    setIsSaving(true);
+    setSaveStatus(
+      mode === "demo"
+        ? "Saving demo verification to Polygon Amoy..."
+        : "Saving Jitsi verification to Polygon Amoy..."
+    );
+
+    const verificationPayload = {
+      roomId,
+      listingId: linkedListing.id,
+      onChainBatchId: linkedListing.onChainBatchId,
+      verificationReference: recordingLink || meetingUrl,
+      expertResult:
+        mode === "demo"
+          ? `Demo verification approved for ${linkedListing.crop} in the Mahakrishi showcase room.`
+          : `Jitsi Meet verification completed for ${linkedListing.crop}.`,
+      aiQualityScore: getQualityScore(linkedListing)
+    };
+
     try {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {}
+      if (mode === "demo") {
+        setSaveStatus("Opening MetaMask for demo verification on Polygon Amoy...");
+        const [walletAddress, adminAddress] = await Promise.all([getWalletAddress(), getVerificationTrustAdminAddress()]);
+
+        if (walletAddress.toLowerCase() !== adminAddress.toLowerCase()) {
+          setSaveStatus(`Switch MetaMask to the verification admin wallet ${adminAddress} to pay for demo verification.`);
+          return;
+        }
+
+        const walletResult = await addVerificationWithWallet({
+          batchId: linkedListing.onChainBatchId,
+          videoHash: verificationPayload.verificationReference,
+          expertResult: verificationPayload.expertResult,
+          aiQualityScore: verificationPayload.aiQualityScore
+        });
+
+        setSavedTxHash(walletResult.transactionHash);
+        setSaveStatus("Polygon Amoy confirmed the demo verification. Saving the room proof in Mahakrishi...");
+
+        const persistResponse = await fetch("/api/video/verify", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            ...verificationPayload,
+            txHashOverride: walletResult.transactionHash,
+            signerAddressOverride: walletResult.signerAddress
+          })
+        });
+        const persistBody = await persistResponse.json();
+
+        if (!persistResponse.ok) {
+          setSaveStatus(
+            `Demo verification reached Polygon Amoy, but Mahakrishi could not refresh the room state. ${String(persistBody.error ?? "Please refresh the page.")}`
+          );
+          return;
+        }
+
+        setSaveStatus(`Demo verification saved on-chain for batch #${persistBody.onChainBatchId}.`);
+        return;
+      }
+
+      const response = await fetch("/api/video/verify", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(verificationPayload)
+      });
+
+      const body = await response.json();
+      if (response.ok) {
+        setSavedTxHash(body.txHash ?? "");
+        setSaveStatus(`Verification saved on-chain for batch #${body.onChainBatchId}.`);
+        return;
+      }
+
+      const errorMessage = String(body.error ?? "");
+      if (canFallbackToWalletVerification(errorMessage)) {
+        const [walletAddress, adminAddress] = await Promise.all([getWalletAddress(), getVerificationTrustAdminAddress()]);
+        if (walletAddress.toLowerCase() !== adminAddress.toLowerCase()) {
+          setSaveStatus(`Switch MetaMask to the verification admin wallet ${adminAddress} to pay for on-chain verification.`);
+          return;
+        }
+
+        const walletResult = await addVerificationWithWallet({
+          batchId: linkedListing.onChainBatchId,
+          videoHash: verificationPayload.verificationReference,
+          expertResult: verificationPayload.expertResult,
+          aiQualityScore: verificationPayload.aiQualityScore
+        });
+        setSavedTxHash(walletResult.transactionHash);
+
+        const persistResponse = await fetch("/api/video/verify", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            ...verificationPayload,
+            txHashOverride: walletResult.transactionHash,
+            signerAddressOverride: walletResult.signerAddress
+          })
+        });
+        const persistBody = await persistResponse.json();
+
+        if (!persistResponse.ok) {
+          setSaveStatus(
+            `Verification reached Polygon Amoy, but Mahakrishi could not refresh the room state. ${String(persistBody.error ?? "Please refresh the page.")}`
+          );
+          return;
+        }
+
+        setSaveStatus(`Verification saved on-chain for batch #${persistBody.onChainBatchId}.`);
+        return;
+      }
+
+      setSaveStatus(errorMessage || "Verification could not be saved on-chain.");
+    } catch (error) {
+      if (isUserRejectedWalletAction(error)) {
+        setSaveStatus("MetaMask confirmation was cancelled, so the verification was not saved on-chain.");
+      } else {
+        setSaveStatus(error instanceof Error ? error.message : "Verification could not be saved on-chain.");
+      }
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-main)" }}>
-      {/* Header */}
+    <div className={styles.page}>
       <header className="nav-header">
         <div className="nav-container">
           <Link href="/" className="nav-brand" data-voice="go home open home page">
-            <div className="nav-logo">KV</div>
+            <BrandMark className="nav-logo" background="var(--brand-primary)" color="var(--brand-secondary)" />
             <div>
               <div className="nav-title">Video Verification</div>
-              <div className="nav-subtitle">Live Inspection</div>
+              <div className="nav-subtitle">Jitsi Meet</div>
             </div>
           </Link>
 
-          <div className="nav-actions">
+          <div className={`nav-actions ${styles.headerActions}`}>
+            <a
+              href={meetingUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="btn btn-primary btn-sm"
+              data-voice="open jitsi room open full room open video in new tab"
+            >
+              <ExternalLink size={16} />
+              Open Full Room
+            </a>
             <Link href="/buyer" className="btn btn-secondary btn-sm" data-voice="back to marketplace open buyer page">
               <ArrowLeft size={16} />
               Back to Marketplace
@@ -278,240 +610,308 @@ export default function CallPage() {
       </header>
 
       <main className="dashboard">
-        {/* Hero Banner */}
-        <motion.div
+        <motion.section
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          style={{
-            background: "linear-gradient(135deg, var(--brand-primary), #1A3D2A)",
-            borderRadius: "var(--radius-xl)",
-            padding: "var(--space-2xl)",
-            color: "var(--text-inverse)",
-            marginBottom: "var(--space-xl)"
-          }}
+          className={styles.hero}
         >
-          <span className="label" style={{ color: "var(--brand-secondary)", marginBottom: "var(--space-sm)", display: "block" }}>
-            Live Verification Room
-          </span>
-          <h1 style={{ color: "var(--text-inverse)", marginBottom: "var(--space-md)" }}>
-            Verify Produce Before Payment
-          </h1>
-          <p style={{ opacity: 0.8, maxWidth: 600 }}>
-            This secure space allows farmers and buyers to inspect crops together via video call before locking payment in escrow.
-          </p>
-          <div style={{ display: "flex", gap: "var(--space-md)", marginTop: "var(--space-lg)" }}>
-            <span className="badge" style={{ background: "rgba(255,255,255,0.15)", color: "white" }}>
-              <Users size={14} /> Room: {roomId}
-            </span>
-            <span className="badge" style={{ background: joined ? "var(--accent-success)" : "rgba(255,255,255,0.15)", color: "white" }}>
-              {joined ? "Connected" : "Not Connected"}
-            </span>
-            <span className="badge" style={{ background: "rgba(255,255,255,0.15)", color: "white" }}>
-              {connectedPeers.length} Participant{connectedPeers.length !== 1 ? "s" : ""}
-            </span>
-          </div>
-        </motion.div>
+          <div className={styles.heroGrid}>
+            <div>
+              <span className={styles.eyebrow}>Live Verification Room</span>
+              <h1 className={styles.heroTitle}>Verify Produce Before Escrow Release</h1>
+              <p className={styles.heroText}>
+                The live meeting runs directly in the browser with Jitsi Meet, so both users can join the same room,
+                talk over video, share screens, and then save the verification proof to Polygon Amoy.
+              </p>
 
-        {/* Main Content */}
-        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "var(--space-xl)" }}>
-          {/* Video Section */}
-          <div className="card card-lg">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-lg)" }}>
-              <div>
-                <h3>Video Call</h3>
-                <p style={{ fontSize: "0.875rem", color: "var(--text-muted)", marginTop: 4 }}>{status}</p>
+              <div className={styles.heroBadges}>
+                <span className="badge" style={{ background: "rgba(255,255,255,0.16)", color: "white" }}>
+                  <Users size={14} /> Room: {roomId}
+                </span>
+                <span className="badge" style={{ background: joined ? "var(--accent-success)" : "rgba(255,255,255,0.16)", color: "white" }}>
+                  {joined ? "Joined" : "Waiting"}
+                </span>
+                <span className="badge" style={{ background: "rgba(255,255,255,0.16)", color: "white" }}>
+                  {totalParticipants} Participant{totalParticipants !== 1 ? "s" : ""}
+                </span>
+                {linkedListing?.onChainBatchId ? (
+                  <span className="badge" style={{ background: "rgba(255,255,255,0.16)", color: "white" }}>
+                    Batch #{linkedListing.onChainBatchId}
+                  </span>
+                ) : null}
               </div>
-              <span className={`badge ${joined && remoteReady ? "badge-success" : "badge-warning"}`}>
-                {joined && remoteReady ? "Live" : joined ? "Waiting" : "Preview"}
+            </div>
+
+            <div className={styles.heroPanel}>
+              <div className={styles.heroPanelTitle}>Room Readiness</div>
+              <div className={styles.heroPanelList}>
+                <div className={styles.heroPanelRow}>
+                  <span>Meeting engine</span>
+                  <strong>Jitsi IFrame API</strong>
+                </div>
+                <div className={styles.heroPanelRow}>
+                  <span>Join mode</span>
+                  <strong>Browser only</strong>
+                </div>
+                <div className={styles.heroPanelRow}>
+                  <span>Current status</span>
+                  <strong>{roomState}</strong>
+                </div>
+                <div className={styles.heroPanelRow}>
+                  <span>Proof target</span>
+                  <strong>{linkedListing?.onChainBatchId ? "Polygon Amoy" : "Waiting for linked batch"}</strong>
+                </div>
+              </div>
+              <p className={styles.heroPanelNote}>
+                No extra app install is required. If the embed looks blocked in your browser, open the room in a full
+                tab and continue the same verification flow there.
+              </p>
+            </div>
+          </div>
+        </motion.section>
+
+        <section className={styles.contentGrid}>
+          <div className={`card card-lg ${styles.callCard}`}>
+            <div className={styles.callHeader}>
+              <div>
+                <h3>Jitsi Verification Call</h3>
+                <p className={styles.callSubtitle}>{status}</p>
+              </div>
+              <span className={`badge ${joined && hadRemoteParticipant ? "badge-success" : "badge-warning"}`}>
+                {roomState}
               </span>
             </div>
 
-            {errorText && (
-              <div style={{
-                padding: "var(--space-md)",
-                background: "rgba(226, 92, 61, 0.1)",
-                borderRadius: "var(--radius-md)",
-                marginBottom: "var(--space-lg)",
-                display: "flex",
-                alignItems: "flex-start",
-                gap: "var(--space-md)"
-              }}>
+            {errorText ? (
+              <div className={styles.errorBanner}>
                 <AlertCircle size={20} color="var(--accent-warning)" />
                 <div>
-                  <div style={{ fontWeight: 600, color: "var(--accent-warning)" }}>Connection Issue</div>
-                  <p style={{ fontSize: "0.875rem", marginTop: 2 }}>{errorText}</p>
+                  <div className={styles.bannerTitle}>Jitsi Issue</div>
+                  <p className={styles.bannerText}>{errorText}</p>
                 </div>
+              </div>
+            ) : (
+              <div className={styles.noticeBanner}>
+                Allow camera and microphone access if your browser asks, then ask the second participant to open the same
+                Mahakrishi room link.
               </div>
             )}
 
-            {/* Video Grid */}
-            <div className="video-grid" style={{ marginBottom: "var(--space-lg)" }}>
-              <div className="video-tile">
-                <div className="video-placeholder" style={{ display: deviceReady ? "none" : "flex" }}>
-                  <Video size={48} style={{ opacity: 0.5 }} />
-                  <span>Click "Preview Camera" to start</span>
+            <div className={styles.stageShell}>
+              <div className={styles.stageHeader}>
+                <div>
+                  <div className={styles.stageLabel}>Verification Room</div>
+                  <div className={styles.stageTitle}>{jitsiRoomName}</div>
                 </div>
-                <video
-                  ref={localVideoRef}
-                  autoPlay
-                  muted
-                  playsInline
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                    display: deviceReady ? "block" : "none"
-                  }}
-                />
-                <span className="video-label">You</span>
+                <a
+                  href={meetingUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn btn-secondary btn-sm"
+                  data-voice="open full room open jitsi open video room"
+                >
+                  <ExternalLink size={16} />
+                  Open in Jitsi
+                </a>
               </div>
 
-              <div className="video-tile">
-                <div className="video-placeholder" style={{ display: remoteReady ? "none" : "flex" }}>
-                  <Users size={48} style={{ opacity: 0.5 }} />
-                  <span>Waiting for other participant...</span>
-                </div>
-                <video
-                  ref={remoteVideoRef}
-                  autoPlay
-                  playsInline
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                    display: remoteReady ? "block" : "none"
-                  }}
-                />
-                <span className="video-label">{remoteReady ? "Farmer/Buyer" : "Waiting..."}</span>
-              </div>
+              <div ref={containerRef} className={styles.meetingFrame} />
             </div>
 
-            {/* Controls */}
-            <div className="video-controls">
-              {!joined ? (
-                <>
-                  <button
-                    className="btn btn-secondary"
-                    onClick={previewDevices}
-                    disabled={preparingDevices || deviceReady}
-                    data-testid="preview-btn"
-                    data-voice="preview camera start camera prepare devices video call start video call camera on camera ons open camera connect camera"
-                  >
-                    <Video size={18} />
-                    {preparingDevices ? "Starting..." : deviceReady ? "Camera Ready" : "Preview Camera"}
-                  </button>
-                  <button
-                    className="btn btn-primary"
-                    onClick={joinRoom}
-                    disabled={!deviceReady}
-                    data-testid="join-btn"
-                    data-voice="join room start call enter room connect buyer call buyer connect call"
-                  >
-                    <Phone size={18} />
-                    Join Room
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    className={`video-control-btn ${muted ? "btn-primary" : ""}`}
-                    onClick={toggleMute}
-                    title={muted ? "Unmute" : "Mute"}
-                    data-voice={muted ? "unmute turn microphone on" : "mute turn microphone off"}
-                  >
-                    {muted ? <MicOff size={22} /> : <Mic size={22} />}
-                  </button>
-                  <button
-                    className={`video-control-btn ${!cameraOn ? "btn-primary" : ""}`}
-                    onClick={toggleCamera}
-                    title={cameraOn ? "Turn Off Camera" : "Turn On Camera"}
-                    data-voice={cameraOn ? "camera off turn camera off stop camera video off" : "camera on camera ons turn camera on start camera video on"}
-                  >
-                    {cameraOn ? <Video size={22} /> : <VideoOff size={22} />}
-                  </button>
-                  <button
-                    className="video-control-btn end-call"
-                    onClick={endCall}
-                    title="End Call"
-                    data-testid="end-call-btn"
-                    data-voice="end call hang up leave room"
-                  >
-                    <PhoneOff size={22} />
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Sidebar */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-lg)" }}>
-            {/* Invite Card */}
-            <div className="card card-lg">
-              <h3 style={{ marginBottom: "var(--space-md)" }}>Invite Participant</h3>
-              <p style={{ fontSize: "0.875rem", color: "var(--text-secondary)", marginBottom: "var(--space-md)" }}>
-                Share this link with the farmer or buyer to join the verification call.
-              </p>
-              
-              <div style={{
-                padding: "var(--space-md)",
-                background: "var(--bg-secondary)",
-                borderRadius: "var(--radius-md)",
-                fontFamily: "JetBrains Mono, monospace",
-                fontSize: "0.75rem",
-                wordBreak: "break-all",
-                marginBottom: "var(--space-md)"
-              }}>
-                {shareUrl || "Loading..."}
-              </div>
-
+            <div className={styles.controlDock}>
+              <button
+                className={`btn ${muted ? "btn-primary" : "btn-secondary"}`}
+                onClick={toggleMute}
+                disabled={!joined}
+                data-voice={muted ? "unmute turn microphone on" : "mute turn microphone off"}
+              >
+                {muted ? <MicOff size={18} /> : <Mic size={18} />}
+                {muted ? "Unmute" : "Mute"}
+              </button>
+              <button
+                className={`btn ${cameraOn ? "btn-secondary" : "btn-primary"}`}
+                onClick={toggleCamera}
+                disabled={!joined}
+                data-voice={cameraOn ? "camera off turn camera off stop camera video off" : "camera on turn camera on start camera video on"}
+              >
+                {cameraOn ? <Video size={18} /> : <VideoOff size={18} />}
+                {cameraOn ? "Camera Off" : "Camera On"}
+              </button>
               <button
                 className="btn btn-secondary"
-                onClick={copyInviteLink}
-                style={{ width: "100%" }}
-                data-testid="copy-link-btn"
-                data-voice="copy invite link share room link"
+                onClick={openChat}
+                disabled={!joined}
+                data-voice="open chat show chat verification chat"
               >
-                {copied ? <Check size={18} /> : <Copy size={18} />}
-                {copied ? "Link Copied!" : "Copy Invite Link"}
+                <MessageSquare size={18} />
+                Chat
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={shareScreen}
+                disabled={!joined}
+                data-voice="share screen start screen share present screen"
+              >
+                <MonitorUp size={18} />
+                Share Screen
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={hangup}
+                disabled={!joined}
+                data-testid="end-call-btn"
+                data-voice="end call hang up leave room"
+              >
+                <PhoneOff size={18} />
+                End Call
               </button>
             </div>
 
-            {/* Checklist */}
-            <div className="card card-lg">
-              <h3 style={{ marginBottom: "var(--space-lg)" }}>Verification Checklist</h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-md)" }}>
+            <p className={styles.supportText}>
+              The dock above is optimized for quick actions and voice commands. All advanced controls still remain
+              inside the embedded Jitsi room itself.
+            </p>
+          </div>
+
+          <aside className={styles.sidebar}>
+            <div className={`card card-lg ${styles.sideCard}`}>
+              <h3 style={{ marginBottom: "var(--space-md)" }}>Invite Participant</h3>
+              <p className={styles.sideText}>
+                Share this direct Jitsi room link so the second user can join the same verification call immediately.
+              </p>
+
+              <a href={meetingUrl} target="_blank" rel="noreferrer" className={styles.linkBox}>
+                {meetingUrl || "Loading..."}
+              </a>
+
+              <p className={styles.sideHint}>
+                This is a real join link, so it opens the same Jitsi room in a clean browser tab.
+              </p>
+
+              <div className={styles.sideActions}>
+                <button
+                  className="btn btn-secondary"
+                  onClick={copyInviteLink}
+                  style={{ width: "100%" }}
+                  data-testid="copy-link-btn"
+                  data-voice="copy invite link share room link"
+                >
+                  {copied ? <Check size={18} /> : <Copy size={18} />}
+                  {copied ? "Link Copied!" : "Copy Invite Link"}
+                </button>
+                <a
+                  href={meetingUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn btn-primary"
+                  style={{ width: "100%" }}
+                  data-voice="open full room open direct jitsi room"
+                >
+                  <ExternalLink size={18} />
+                  Open Join Link
+                </a>
+              </div>
+            </div>
+
+            <div className={`card card-lg ${styles.sideCard}`}>
+              <h3 style={{ marginBottom: "var(--space-md)" }}>Verification Save</h3>
+              <div className={styles.detailList}>
+                <div className={styles.detailRow}>
+                  <span>Linked crop</span>
+                  <strong>{linkedListing?.crop ?? "Not linked"}</strong>
+                </div>
+                <div className={styles.detailRow}>
+                  <span>Blockchain batch</span>
+                  <strong>{linkedListing?.onChainBatchId ? `#${linkedListing.onChainBatchId}` : "Unavailable"}</strong>
+                </div>
+                <div className={styles.detailRow}>
+                  <span>Reference source</span>
+                  <strong>{referenceLabel}</strong>
+                </div>
+              </div>
+
+              {recordingStatus ? <p className={styles.sideHint}>{recordingStatus}</p> : null}
+
+              <button
+                className="btn btn-primary"
+                style={{ width: "100%", marginBottom: "var(--space-md)" }}
+                onClick={() => void saveVerificationOnChain("live")}
+                disabled={!canSaveVerification}
+                data-voice="save verification save on blockchain complete verification finalize verification"
+              >
+                {isSaving ? "Saving..." : savedTxHash ? "Saved On-Chain" : "Save Verification On-Chain"}
+              </button>
+
+              <button
+                className="btn btn-secondary"
+                style={{ width: "100%", marginBottom: "var(--space-md)" }}
+                onClick={() => void saveVerificationOnChain("demo")}
+                disabled={!canSaveDemoVerification}
+                data-voice="demo verify demo verification approve demo save demo verification"
+              >
+                {isSaving ? "Saving..." : savedTxHash ? "Saved On-Chain" : "Demo Verify On-Chain"}
+              </button>
+
+              <p className={styles.sideText}>{saveStatus}</p>
+
+              {savedTxHash ? (
+                <a
+                  href={`${explorerBase}/tx/${savedTxHash}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn btn-secondary"
+                  style={{ width: "100%", marginTop: "var(--space-md)" }}
+                >
+                  <ExternalLink size={18} />
+                  View Transaction
+                </a>
+              ) : null}
+            </div>
+
+            <div className={`card card-lg ${styles.sideCard}`}>
+              <h3 style={{ marginBottom: "var(--space-lg)" }}>Verification Steps</h3>
+              <div className={styles.stepList}>
                 {[
-                  { title: "Preview your camera", desc: "Ensure camera and mic work before joining" },
-                  { title: "Check produce visually", desc: "Inspect freshness, packaging, and lot quality" },
-                  { title: "Confirm details", desc: "Verify quantity, grade, and pricing" },
-                  { title: "Move to escrow", desc: "Lock payment securely after agreement" }
-                ].map((item, i) => (
-                  <div key={i} style={{
-                    padding: "var(--space-md)",
-                    background: "var(--bg-secondary)",
-                    borderRadius: "var(--radius-md)"
-                  }}>
-                    <div style={{ fontWeight: 600, marginBottom: 2 }}>{item.title}</div>
-                    <div style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>{item.desc}</div>
+                  {
+                    title: "Share one room link",
+                    desc: "Both users open the same Mahakrishi verification page or the same direct Jitsi room."
+                  },
+                  {
+                    title: "Verify crop live",
+                    desc: "Use video, voice, chat, and screen share to confirm quality, quantity, and agreement terms."
+                  },
+                  {
+                    title: "Complete the call",
+                    desc: "Finish the discussion once both sides are satisfied with the verification."
+                  },
+                  {
+                    title: "Save proof on-chain",
+                    desc: "Store the verification reference on Polygon Amoy for transparency and fair trade."
+                  }
+                ].map((item, index) => (
+                  <div key={item.title} className={styles.stepItem}>
+                    <div className={styles.stepNumber}>{index + 1}</div>
+                    <div>
+                      <div className={styles.stepTitle}>{item.title}</div>
+                      <div className={styles.stepDesc}>{item.desc}</div>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Security Note */}
-            <div className="card" style={{ background: "rgba(45, 90, 63, 0.08)", borderColor: "var(--brand-primary)" }}>
-              <div style={{ display: "flex", gap: "var(--space-md)" }}>
-                <Shield size={24} color="var(--brand-primary)" />
-                <div>
-                  <div style={{ fontWeight: 600, marginBottom: 2 }}>Secure Connection</div>
-                  <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", margin: 0 }}>
-                    This call is end-to-end encrypted using WebRTC. No video data is stored.
-                  </p>
-                </div>
+            <div className={styles.helpCard}>
+              <Shield size={24} color="var(--brand-primary)" />
+              <div>
+                <div className={styles.helpTitle}>If the embed looks blocked</div>
+                <p className={styles.helpText}>
+                  Open the same room in a full Jitsi tab, allow camera and microphone access there, and then return here
+                  when you are ready to save the verification to blockchain.
+                </p>
               </div>
             </div>
-          </div>
-        </div>
+          </aside>
+        </section>
       </main>
     </div>
   );

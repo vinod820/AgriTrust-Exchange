@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { BrowserProvider, formatEther } from "ethers";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Mic,
@@ -18,7 +19,15 @@ import {
   CheckCircle2,
   ArrowLeft
 } from "lucide-react";
+import { ensureWalletOnAmoy, formatWalletAddress, publishBatchOnChain, resolveListingPublishFailure } from "@/lib/contracts/client";
+import { contracts } from "@/lib/contracts/config";
+import { isBlockchainConfigured } from "@/lib/contracts/config";
+import { getProductImageForCrop } from "@/lib/data/product-images";
 import { getListings } from "@/lib/data/mock-db";
+import { createListingSchema, getListingFieldErrors, getListingValidationMessage, type ListingFieldErrors } from "@/lib/listings/validation";
+import { CreateListingInput, Listing } from "@/lib/types";
+import { getInjectedProvider, getWalletErrorMessage, waitForInjectedProvider } from "@/lib/wallet/provider";
+import { BrandMark } from "@/components/branding/BrandMark";
 import { useVoice } from "@/components/voice/VoiceProvider";
 
 const sections = [
@@ -29,12 +38,60 @@ const sections = [
   { id: "wallet", label: "Wallet", icon: Wallet }
 ];
 
+const initialSellCropForm = {
+  crop: "",
+  quantityKg: "",
+  pricePerKg: "",
+  location: "",
+  description: ""
+};
+
+function buildBatchId(crop: string, onChainBatchId?: number) {
+  const prefix = crop
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 3) || "LOT";
+
+  return `BATCH-${prefix}-${onChainBatchId ?? Math.floor(Math.random() * 9000 + 1000)}`;
+}
+
+function todayDateValue() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export default function FarmerPage() {
   const searchParams = useSearchParams();
   const activeSection = searchParams.get("section") || "overview";
   const { isListening, transcript, response, startListening, stopListening } = useVoice();
-  
-  const myListings = getListings().slice(0, 3);
+  const [myListings, setMyListings] = useState<Listing[]>(() => getListings().slice(0, 3));
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadListings() {
+      try {
+        const response = await fetch("/api/listings", { cache: "no-store" });
+        if (!response.ok) {
+          return;
+        }
+
+        const data = (await response.json()) as Listing[];
+        if (isMounted) {
+          setMyListings(data.slice(0, 3));
+        }
+      } catch {
+        // Keep local fallback data if the API is unavailable.
+      }
+    }
+
+    void loadListings();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const totalKg = myListings.reduce((sum, l) => sum + l.quantityKg, 0);
   const earnings = myListings.reduce((sum, l) => sum + (l.quantityKg * l.pricePerKg * 0.3), 0);
 
@@ -44,7 +101,7 @@ export default function FarmerPage() {
       <header className="nav-header">
         <div className="nav-container">
           <Link href="/" className="nav-brand" data-testid="nav-brand">
-            <div className="nav-logo">KV</div>
+            <BrandMark className="nav-logo" background="var(--brand-primary)" color="var(--brand-secondary)" />
             <div>
               <div className="nav-title">Farmer Portal</div>
               <div className="nav-subtitle">Voice-First Selling</div>
@@ -232,7 +289,13 @@ export default function FarmerPage() {
             transition={{ duration: 0.2 }}
           >
             {activeSection === "overview" && <OverviewSection listings={myListings} />}
-            {activeSection === "sell" && <SellCropSection />}
+            {activeSection === "sell" && (
+              <SellCropSection
+                onCreated={(listing) => {
+                  setMyListings((current) => [listing, ...current.filter((item) => item.id !== listing.id)].slice(0, 3));
+                }}
+              />
+            )}
             {activeSection === "voice" && <VoiceSection isListening={isListening} transcript={transcript} response={response} startListening={startListening} />}
             {activeSection === "inventory" && <InventorySection listings={myListings} />}
             {activeSection === "wallet" && <WalletSection />}
@@ -305,49 +368,257 @@ function OverviewSection({ listings }: { listings: any[] }) {
   );
 }
 
-function SellCropSection() {
+function SellCropSection({ onCreated }: { onCreated: (listing: Listing) => void }) {
+  const router = useRouter();
+  const [form, setForm] = useState(initialSellCropForm);
+  const [fieldErrors, setFieldErrors] = useState<ListingFieldErrors>({});
+  const [status, setStatus] = useState("Ready to publish a new batch.");
+  const [explorerHref, setExplorerHref] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  function updateField<K extends keyof typeof initialSellCropForm>(key: K, value: (typeof initialSellCropForm)[K]) {
+    setForm((current) => ({ ...current, [key]: value }));
+    setFieldErrors((current) => {
+      if (!current[key as keyof ListingFieldErrors]) {
+        return current;
+      }
+
+      return {
+        ...current,
+        [key]: undefined
+      };
+    });
+  }
+
+  function renderFieldError(key: keyof ListingFieldErrors) {
+    if (!fieldErrors[key]) {
+      return null;
+    }
+
+    return (
+      <span style={{ marginTop: 4, fontSize: "0.8125rem", color: "var(--accent-warning)" }}>
+        {fieldErrors[key]}
+      </span>
+    );
+  }
+
+  async function submitListing(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (isSubmitting) {
+      return;
+    }
+
+    const crop = form.crop.trim();
+    const location = form.location.trim();
+    const quantityKg = Number(form.quantityKg);
+    const pricePerKg = Number(form.pricePerKg);
+    const imageReference = getProductImageForCrop(crop || "produce");
+
+    let payload: CreateListingInput = {
+      crop,
+      farmerName: "Voice Farmer Demo",
+      farmerWallet: "0xFA11...0011",
+      location,
+      quantityKg,
+      pricePerKg,
+      harvestDate: todayDateValue(),
+      description: form.description.trim(),
+      images: [imageReference],
+      geoLabel: location
+    };
+
+    const validation = createListingSchema.safeParse(payload);
+    if (!validation.success) {
+      setExplorerHref("");
+      setFieldErrors(getListingFieldErrors(validation.error));
+      setStatus(getListingValidationMessage(validation.error));
+      return;
+    }
+
+    setIsSubmitting(true);
+    setExplorerHref("");
+
+    try {
+      setFieldErrors({});
+      if (isBlockchainConfigured()) {
+        setStatus("Opening MetaMask and connecting to Polygon Amoy...");
+        try {
+          const onChainResult = await publishBatchOnChain({
+            cropType: crop,
+            quantityKg,
+            imageReference,
+            geoLabel: location,
+            pricePerKg,
+            onProgress: (message) => setStatus(message)
+          });
+
+          payload = {
+            ...payload,
+            batchId: buildBatchId(crop, onChainResult.batchId),
+            farmerName: `Farmer ${formatWalletAddress(onChainResult.farmerAddress)}`,
+            farmerWallet: onChainResult.farmerAddress,
+            onChainBatchId: onChainResult.batchId,
+            onChainTxHash: onChainResult.transactionHash
+          };
+        } catch (error) {
+          setStatus(resolveListingPublishFailure(error).message);
+          return;
+        }
+      } else {
+        setStatus("Blockchain is not configured for Polygon Amoy right now.");
+        return;
+      }
+
+      const response = await fetch("/api/listings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+      const body = await response.json();
+
+      if (response.ok) {
+        const txHash = body.onChainTxHash ?? payload.onChainTxHash;
+        setForm(initialSellCropForm);
+        onCreated(body as Listing);
+        setStatus(`Batch ${body.batchId} is live on-chain as #${body.onChainBatchId}.`);
+        setExplorerHref(txHash ? `${contracts.amoyExplorerUrl}/tx/${txHash}` : "");
+        router.refresh();
+        return;
+      }
+
+      if (body.fieldErrors) {
+        setFieldErrors(body.fieldErrors as ListingFieldErrors);
+      }
+      setStatus(body.error ?? "Listing submission failed.");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Listing submission failed.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return (
     <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "var(--space-xl)" }}>
       <div className="card card-lg">
         <h3 style={{ marginBottom: "var(--space-lg)" }}>Register New Crop</h3>
-        <form style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-lg)" }}>
+        <form onSubmit={submitListing} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-lg)" }}>
           <div className="input-group">
             <label className="input-label">Crop Type</label>
-            <select className="input select" data-testid="input-crop" data-voice="select crop choose crop filter crop" aria-label="crop type">
+            <select
+              className="input select"
+              value={form.crop}
+              onChange={(event) => updateField("crop", event.target.value)}
+              data-testid="input-crop"
+              data-voice="select crop choose crop filter crop"
+              aria-label="crop type"
+              required
+            >
               <option value="">Select crop</option>
               <option value="tomato">Tomato</option>
               <option value="rice">Rice</option>
               <option value="wheat">Wheat</option>
               <option value="onion">Onion</option>
             </select>
+            {renderFieldError("crop")}
           </div>
 
           <div className="input-group">
             <label className="input-label">Quantity (kg)</label>
-            <input type="number" className="input" placeholder="e.g., 500" data-testid="input-quantity" name="quantity" aria-label="listing quantity" />
+            <input
+              type="number"
+              className="input"
+              placeholder="e.g., 500"
+              value={form.quantityKg}
+              onChange={(event) => updateField("quantityKg", event.target.value)}
+              data-testid="input-quantity"
+              name="quantity"
+              aria-label="listing quantity"
+              min="1"
+              required
+            />
+            {renderFieldError("quantityKg")}
           </div>
 
           <div className="input-group">
             <label className="input-label">Price per kg (₹)</label>
-            <input type="number" className="input" placeholder="e.g., 35" data-testid="input-price" name="price" aria-label="price per kg" />
+            <input
+              type="number"
+              className="input"
+              placeholder="e.g., 35"
+              value={form.pricePerKg}
+              onChange={(event) => updateField("pricePerKg", event.target.value)}
+              data-testid="input-price"
+              name="price"
+              aria-label="price per kg"
+              min="1"
+              required
+            />
+            {renderFieldError("pricePerKg")}
           </div>
 
           <div className="input-group">
             <label className="input-label">Location</label>
-            <input type="text" className="input" placeholder="e.g., Bangalore Rural" data-testid="input-location" name="location" aria-label="farm location" />
+            <input
+              type="text"
+              className="input"
+              placeholder="e.g., Bangalore Rural"
+              value={form.location}
+              onChange={(event) => updateField("location", event.target.value)}
+              data-testid="input-location"
+              name="location"
+              aria-label="farm location"
+              minLength={2}
+              required
+            />
+            {renderFieldError("location")}
           </div>
 
           <div className="input-group" style={{ gridColumn: "1 / -1" }}>
             <label className="input-label">Description</label>
-            <textarea className="input" placeholder="Describe your crop quality..." data-testid="input-description" name="crop-description" aria-label="crop description" />
+            <textarea
+              className="input"
+              placeholder="Describe your crop quality..."
+              value={form.description}
+              onChange={(event) => updateField("description", event.target.value)}
+              data-testid="input-description"
+              name="crop-description"
+              aria-label="crop description"
+              minLength={8}
+              required
+            />
+            {renderFieldError("description")}
           </div>
 
           <div style={{ gridColumn: "1 / -1", display: "flex", gap: "var(--space-md)" }}>
-            <button type="button" className="btn btn-primary" data-testid="submit-listing" data-voice="create listing submit listing register crop add crop listing">
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={isSubmitting}
+              data-testid="submit-listing"
+              data-voice="create listing submit listing register crop add crop listing"
+            >
               <PlusCircle size={18} />
-              Create Listing
+              {isSubmitting ? "Creating..." : "Create Listing"}
             </button>
           </div>
+          <p style={{ gridColumn: "1 / -1", margin: 0, color: "var(--text-secondary)" }}>{status}</p>
+          {explorerHref ? (
+            <a
+              href={explorerHref}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                gridColumn: "1 / -1",
+                color: "var(--brand-primary)",
+                fontWeight: 600,
+                textDecoration: "underline"
+              }}
+            >
+              View this Polygon Amoy transaction on Polygonscan
+            </a>
+          ) : null}
         </form>
       </div>
 
@@ -530,20 +801,196 @@ function InventorySection({ listings }: { listings: any[] }) {
 }
 
 function WalletSection() {
-  const [isConnected, setIsConnected] = useState(false);
+  const [wallet, setWallet] = useState({
+    hasProvider: null as boolean | null,
+    account: "",
+    balance: "",
+    chainId: "",
+    statusText: "Checking for MetaMask..."
+  });
+  const [connecting, setConnecting] = useState(false);
+  const [errorText, setErrorText] = useState("");
 
-  const connectWallet = async () => {
-    if (typeof window !== "undefined" && (window as any).ethereum) {
-      try {
-        await (window as any).ethereum.request({ method: "eth_requestAccounts" });
-        setIsConnected(true);
-      } catch (err) {
-        console.error(err);
+  useEffect(() => {
+    let active = true;
+    let boundProvider = getInjectedProvider();
+
+    async function refreshWallet(providerOverride?: ReturnType<typeof getInjectedProvider>) {
+      const providerSource = providerOverride ?? getInjectedProvider();
+
+      if (!providerSource) {
+        if (!active) {
+          return;
+        }
+
+        setWallet({
+          hasProvider: false,
+          account: "",
+          balance: "",
+          chainId: "",
+          statusText: "MetaMask is not available in this browser yet."
+        });
+        return;
       }
-    } else {
-      alert("Please install MetaMask.");
+
+      const browserProvider = new BrowserProvider(providerSource as never);
+      const accounts = (await providerSource.request({ method: "eth_accounts" })) as string[];
+      const network = await browserProvider.getNetwork();
+      const chainId = network.chainId.toString();
+      const isAmoy = chainId === String(contracts.chainId);
+
+      if (!active) {
+        return;
+      }
+
+      if (accounts[0]) {
+        const balance = await browserProvider.getBalance(accounts[0]);
+
+        if (!active) {
+          return;
+        }
+
+        setWallet({
+          hasProvider: true,
+          account: accounts[0],
+          balance: `${Number(formatEther(balance)).toFixed(4)} ETH`,
+          chainId,
+          statusText: isAmoy
+            ? "Wallet connected and ready for blockchain actions."
+            : `Wallet connected on chain ${chainId}. Connect once more to switch to Polygon Amoy.`
+        });
+        return;
+      }
+
+      setWallet({
+        hasProvider: true,
+        account: "",
+        balance: "",
+        chainId,
+        statusText: isAmoy
+          ? "MetaMask detected. Connect to start blockchain-backed actions."
+          : `MetaMask detected on chain ${chainId}. Connect to switch to Polygon Amoy.`
+      });
     }
-  };
+
+    function handleWalletChange() {
+      void refreshWallet(boundProvider);
+    }
+
+    async function detectWallet() {
+      const provider = await waitForInjectedProvider();
+      if (!active) {
+        return;
+      }
+
+      boundProvider = provider;
+      provider?.on?.("accountsChanged", handleWalletChange);
+      provider?.on?.("chainChanged", handleWalletChange);
+      await refreshWallet(provider);
+    }
+
+    void detectWallet();
+
+    return () => {
+      active = false;
+      boundProvider?.removeListener?.("accountsChanged", handleWalletChange);
+      boundProvider?.removeListener?.("chainChanged", handleWalletChange);
+    };
+  }, []);
+
+  async function connectWallet() {
+    setErrorText("");
+    const provider = await waitForInjectedProvider(1800);
+
+    if (!provider) {
+      setWallet({
+        hasProvider: false,
+        account: "",
+        balance: "",
+        chainId: "",
+        statusText: "MetaMask is not available in this browser. Install or enable the extension first."
+      });
+      return;
+    }
+
+    setConnecting(true);
+    try {
+      const browserProvider = await ensureWalletOnAmoy();
+      const signer = await browserProvider.getSigner();
+      const address = await signer.getAddress();
+      const [balance, network] = await Promise.all([
+        browserProvider.getBalance(address),
+        browserProvider.getNetwork()
+      ]);
+
+      setWallet({
+        hasProvider: true,
+        account: address,
+        balance: `${Number(formatEther(balance)).toFixed(4)} ETH`,
+        chainId: network.chainId.toString(),
+        statusText: "Wallet connected successfully on Polygon Amoy."
+      });
+    } catch (error) {
+      setErrorText(getWalletErrorMessage(error));
+      setWallet((current) => ({
+        ...current,
+        hasProvider: current.hasProvider ?? true,
+        statusText: "Wallet connection did not finish."
+      }));
+    } finally {
+      setConnecting(false);
+    }
+  }
+
+  async function refreshWallet() {
+    setErrorText("");
+    const provider = await waitForInjectedProvider(1800);
+
+    if (!provider) {
+      setWallet({
+        hasProvider: false,
+        account: "",
+        balance: "",
+        chainId: "",
+        statusText: "MetaMask is still not available. Use Chrome, Edge, or Brave with the extension enabled."
+      });
+      return;
+    }
+
+    const browserProvider = new BrowserProvider(provider as never);
+    const accounts = (await provider.request({ method: "eth_accounts" })) as string[];
+    const network = await browserProvider.getNetwork();
+    const chainId = network.chainId.toString();
+
+    if (accounts[0]) {
+      const balance = await browserProvider.getBalance(accounts[0]);
+      setWallet({
+        hasProvider: true,
+        account: accounts[0],
+        balance: `${Number(formatEther(balance)).toFixed(4)} ETH`,
+        chainId,
+        statusText:
+          chainId === String(contracts.chainId)
+            ? "Wallet refreshed and ready."
+            : `Wallet refreshed on chain ${chainId}. Connect once more to switch to Polygon Amoy.`
+      });
+      return;
+    }
+
+    setWallet({
+      hasProvider: true,
+      account: "",
+      balance: "",
+      chainId,
+      statusText:
+        chainId === String(contracts.chainId)
+          ? "MetaMask detected. Connect to continue."
+          : `MetaMask detected on chain ${chainId}. Connect to switch to Polygon Amoy.`
+    });
+  }
+
+  const walletBadge =
+    wallet.chainId === String(contracts.chainId) ? "Polygon Amoy" : wallet.chainId ? `Chain ${wallet.chainId}` : "Polygon";
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-xl)" }}>
@@ -551,28 +998,60 @@ function WalletSection() {
         <div className="wallet-header">
           <div>
             <div className="wallet-balance-label">Available Balance</div>
-            <div className="wallet-balance">0.00 ETH</div>
+            <div className="wallet-balance">{wallet.balance || "0.0000 ETH"}</div>
           </div>
-          <div className="badge badge-blockchain">Polygon</div>
+          <div className="badge badge-blockchain">{walletBadge}</div>
         </div>
-        
-        {!isConnected ? (
-          <button 
-            className="btn btn-accent" 
-            style={{ width: "100%" }}
-            onClick={connectWallet}
-            data-testid="connect-wallet-btn"
-            data-voice="connect wallet open metamask wallet login wallet"
-          >
-            <Wallet size={18} />
-            Connect MetaMask
-          </button>
-        ) : (
+
+        <div
+          style={{
+            padding: "var(--space-md)",
+            background: "rgba(26, 46, 32, 0.04)",
+            borderRadius: "var(--radius-md)",
+            marginBottom: "var(--space-md)"
+          }}
+        >
+          <div style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)", marginBottom: 4 }}>Wallet status</div>
+          <p style={{ margin: 0, fontSize: "0.875rem", color: "var(--text-secondary)" }}>{errorText || wallet.statusText}</p>
+        </div>
+
+        {wallet.account ? (
           <div>
             <div className="wallet-address" style={{ fontFamily: "JetBrains Mono", fontSize: "0.875rem", opacity: 0.7 }}>
-              0x742d...3f4a
+              {formatWalletAddress(wallet.account)}
             </div>
-            <span className="badge badge-success" style={{ marginTop: "var(--space-md)" }}>Connected</span>
+            <div style={{ display: "flex", gap: "var(--space-sm)", flexWrap: "wrap", marginTop: "var(--space-md)" }}>
+              <span className="badge badge-success">Connected</span>
+              <button className="btn btn-secondary btn-sm" onClick={refreshWallet}>
+                Refresh Wallet
+              </button>
+            </div>
+          </div>
+        ) : wallet.hasProvider === false ? (
+          <div style={{ display: "flex", gap: "var(--space-sm)", flexWrap: "wrap" }}>
+            <button className="btn btn-secondary" onClick={refreshWallet}>
+              Retry Detection
+            </button>
+            <a className="btn btn-accent" href="https://metamask.io/download/" target="_blank" rel="noreferrer">
+              Install MetaMask
+            </a>
+          </div>
+        ) : (
+          <div style={{ display: "flex", gap: "var(--space-sm)", flexWrap: "wrap" }}>
+            <button
+              className="btn btn-accent"
+              style={{ flex: 1, minWidth: 220 }}
+              onClick={connectWallet}
+              disabled={connecting}
+              data-testid="connect-wallet-btn"
+              data-voice="connect wallet open metamask wallet login wallet"
+            >
+              <Wallet size={18} />
+              {connecting ? "Connecting..." : "Connect MetaMask"}
+            </button>
+            <button className="btn btn-secondary" onClick={refreshWallet}>
+              Refresh Wallet
+            </button>
           </div>
         )}
       </div>

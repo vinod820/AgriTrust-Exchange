@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type KeyboardEvent, type MouseEvent } from "react";
+import { useEffect, useState, type KeyboardEvent, type MouseEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -17,6 +17,8 @@ import {
   List
 } from "lucide-react";
 import { getListings } from "@/lib/data/mock-db";
+import { Listing } from "@/lib/types";
+import { BrandMark } from "@/components/branding/BrandMark";
 
 const filters = {
   crops: ["All", "Tomato", "Rice", "Wheat", "Onion", "Potato"],
@@ -27,8 +29,33 @@ export default function BuyerPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCrop, setSelectedCrop] = useState("All");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  
-  const listings = getListings();
+  const [listings, setListings] = useState<Listing[]>(() => getListings());
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadListings() {
+      try {
+        const response = await fetch("/api/listings", { cache: "no-store" });
+        if (!response.ok) {
+          return;
+        }
+
+        const data = (await response.json()) as Listing[];
+        if (isMounted) {
+          setListings(data);
+        }
+      } catch {
+        // Keep bundled fallback data if the API is unavailable.
+      }
+    }
+
+    void loadListings();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
   
   const filteredListings = listings.filter(listing => {
     if (selectedCrop !== "All" && listing.crop !== selectedCrop) return false;
@@ -42,7 +69,7 @@ export default function BuyerPage() {
       <header className="nav-header">
         <div className="nav-container">
           <Link href="/" className="nav-brand" data-voice="go home open home page">
-            <div className="nav-logo" style={{ background: "#CCFF00", color: "#111812" }}>KV</div>
+            <BrandMark className="nav-logo" style={{ background: "#CCFF00", color: "#111812" }} />
             <div>
               <div className="nav-title">Buyer Marketplace</div>
               <div className="nav-subtitle">Source with Trust</div>

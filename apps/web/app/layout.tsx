@@ -4,7 +4,12 @@ import { VoiceProvider } from "@/components/voice/VoiceProvider";
 
 export const metadata: Metadata = {
   title: "KrishiVoice Chain | Farm Meets Future",
-  description: "Voice-first agriculture marketplace with AI-powered crop analysis, blockchain traceability, and smart escrow payments."
+  description: "Voice-first agriculture marketplace with AI-powered crop analysis, blockchain traceability, and smart escrow payments.",
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+    apple: "/icon.svg"
+  }
 };
 
 export default function RootLayout({

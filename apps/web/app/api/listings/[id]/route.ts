@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { getListingById } from "@/lib/data/mock-db";
+import { getMergedListingById } from "@/lib/contracts/read-models";
 
 export async function GET(_: Request, { params }: { params: { id: string } }) {
-  const listing = getListingById(params.id);
+  const listing = await getMergedListingById(params.id);
   if (!listing) {
     return NextResponse.json({ error: "Listing not found" }, { status: 404 });
   }

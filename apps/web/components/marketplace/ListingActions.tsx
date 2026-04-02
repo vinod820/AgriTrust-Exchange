@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { startTransition, useState } from "react";
+import { createEscrowOrder, getWalletAddress } from "@/lib/contracts/client";
+import { isBlockchainConfigured } from "@/lib/contracts/config";
 import { Listing } from "@/lib/types";
 
 export function ListingActions({ listing }: { listing: Listing }) {
@@ -27,31 +29,57 @@ export function ListingActions({ listing }: { listing: Listing }) {
   }
 
   async function lockEscrow() {
-    setStatus("Locking escrow order...");
-    const response = await fetch("/api/orders", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        listingId: listing.id,
-        batchId: listing.batchId,
-        buyerName: "Fresh Basket Retail",
-        buyerWallet: "0xB00y...9981",
-        quantityKg: Math.min(200, listing.quantityKg),
-        totalAmount: Math.min(200, listing.quantityKg) * listing.pricePerKg,
-        escrowStatus: "locked"
-      })
-    });
+    const quantityKg = Math.min(200, listing.quantityKg);
+    const shouldUseBlockchain = Boolean(listing.onChainBatchId) && isBlockchainConfigured();
+    let buyerWallet = "0xB00y...9981";
+    let onChainOrder: { orderId: number; transactionHash: string } | null = null;
 
-    const body = await response.json();
-    if (response.ok) {
-      setStatus(`Escrow order ${body.id} created. Listing moved to escrow locked state.`);
-      router.refresh();
-      return;
+    try {
+      setStatus(shouldUseBlockchain ? "Locking escrow on Polygon Amoy..." : "Locking demo escrow order...");
+
+      if (shouldUseBlockchain && listing.onChainBatchId) {
+        buyerWallet = await getWalletAddress();
+        onChainOrder = await createEscrowOrder({
+          batchId: listing.onChainBatchId,
+          quantityKg,
+          pricePerKg: listing.pricePerKg,
+          deliveryWindowSeconds: 86400
+        });
+      }
+
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          listingId: listing.id,
+          batchId: listing.batchId,
+          buyerName: shouldUseBlockchain ? `Buyer ${buyerWallet.slice(0, 6)}` : "Fresh Basket Retail",
+          buyerWallet,
+          quantityKg,
+          totalAmount: quantityKg * listing.pricePerKg,
+          escrowStatus: "locked",
+          onChainOrderId: onChainOrder?.orderId,
+          onChainTxHash: onChainOrder?.transactionHash
+        })
+      });
+
+      const body = await response.json();
+      if (response.ok) {
+        setStatus(
+          onChainOrder
+            ? `Escrow locked on-chain as order #${onChainOrder.orderId || body.onChainOrderId}.`
+            : `Escrow order ${body.id} created in demo mode.`
+        );
+        router.refresh();
+        return;
+      }
+
+      setStatus(body.error ?? "Escrow action failed.");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Escrow action failed.");
     }
-
-    setStatus(body.error ?? "Escrow action failed.");
   }
 
   return (

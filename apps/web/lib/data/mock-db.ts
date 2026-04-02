@@ -20,6 +20,14 @@ function id(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+function buildOnChainListingId(batchId: number) {
+  return `listing-onchain-${batchId}`;
+}
+
+function buildOnChainRoomId(batchId: number) {
+  return `room-onchain-${batchId}`;
+}
+
 // Real crop images from Unsplash/Pexels
 const CROP_IMAGES = {
   tomato: [
@@ -602,10 +610,48 @@ export function getListingById(listingId: string) {
   return listings.find((listing) => listing.id === listingId);
 }
 
+export function getListingByRoomId(roomId: string) {
+  return listings.find((listing) => (listing.liveRoomId ?? `room-${listing.id}`) === roomId);
+}
+
+export function upsertListing(input: Listing) {
+  const existingIndex = listings.findIndex((listing) => listing.id === input.id);
+  const nextListing = { ...input };
+
+  if (existingIndex >= 0) {
+    listings[existingIndex] = {
+      ...listings[existingIndex],
+      ...nextListing
+    };
+
+    return listings[existingIndex];
+  }
+
+  listings = [nextListing, ...listings];
+
+  const roomId = nextListing.liveRoomId ?? id("room");
+  if (!videoRooms.find((room) => room.listingId === nextListing.id)) {
+    videoRooms = [
+      {
+        id: roomId,
+        listingId: nextListing.id,
+        farmerName: nextListing.farmerName,
+        createdAt: new Date().toISOString()
+      },
+      ...videoRooms
+    ];
+  }
+
+  return nextListing;
+}
+
 export function createListing(input: CreateListingInput) {
+  const stableListingId = input.onChainBatchId ? buildOnChainListingId(input.onChainBatchId) : id("listing");
+  const stableRoomId = input.onChainBatchId ? buildOnChainRoomId(input.onChainBatchId) : id("room");
   const listing: Listing = {
-    id: id("listing"),
-    batchId: `BATCH-${input.crop.toUpperCase().slice(0, 3)}-${Math.floor(Math.random() * 9000 + 1000)}`,
+    id: stableListingId,
+    batchId:
+      input.batchId ?? `BATCH-${input.crop.toUpperCase().slice(0, 3)}-${input.onChainBatchId ?? Math.floor(Math.random() * 9000 + 1000)}`,
     crop: input.crop,
     farmerName: input.farmerName,
     farmerWallet: input.farmerWallet,
@@ -613,13 +659,16 @@ export function createListing(input: CreateListingInput) {
     quantityKg: input.quantityKg,
     pricePerKg: input.pricePerKg,
     harvestDate: input.harvestDate,
-    status: "under_review",
+    status: input.onChainBatchId ? "listed" : "under_review",
     qualityGrade: "B",
     verified: false,
     images: input.images && input.images.length > 0 ? input.images : [getProductImageForCrop(input.crop)],
     description: input.description,
-    liveRoomId: id("room"),
-    trustScore: 68
+    liveRoomId: stableRoomId,
+    trustScore: 68,
+    onChainBatchId: input.onChainBatchId,
+    onChainTxHash: input.onChainTxHash,
+    geoLabel: input.geoLabel ?? input.location
   };
 
   listings = [listing, ...listings];
@@ -627,11 +676,27 @@ export function createListing(input: CreateListingInput) {
     {
       id: id("trace"),
       batchId: listing.batchId,
-      title: "Listing created",
-      detail: `${listing.crop} batch submitted by ${listing.farmerName}.`,
+      title: input.onChainBatchId ? "Batch minted on-chain" : "Listing created",
+      detail: input.onChainBatchId
+        ? `${listing.crop} batch #${input.onChainBatchId} was published on Polygon Amoy by ${listing.farmerName}.`
+        : `${listing.crop} batch submitted by ${listing.farmerName}.`,
       status: "done",
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      txHash: input.onChainTxHash
     },
+    ...(input.onChainBatchId
+      ? [
+          {
+            id: id("trace"),
+            batchId: listing.batchId,
+            title: "Marketplace listing created",
+            detail: `${listing.quantityKg} kg listed on-chain at Rs ${listing.pricePerKg}/kg.`,
+            status: "done" as const,
+            timestamp: new Date().toISOString(),
+            txHash: input.onChainTxHash
+          }
+        ]
+      : []),
     ...traceEvents
   ];
 
@@ -696,11 +761,13 @@ export function createOrder(input: Omit<Order, "id" | "createdAt">) {
       {
         id: id("trace"),
         batchId: listing.batchId,
-        title: "Escrow locked",
-        detail: `${order.buyerName} locked payment for ${order.quantityKg} kg.`,
+        title: order.onChainOrderId ? "Escrow locked on-chain" : "Escrow locked",
+        detail: order.onChainOrderId
+          ? `${order.buyerName} locked payment on-chain for ${order.quantityKg} kg as order #${order.onChainOrderId}.`
+          : `${order.buyerName} locked payment for ${order.quantityKg} kg.`,
         status: "done",
         timestamp: order.createdAt,
-        txHash: "0xescrow-demo-locked"
+        txHash: order.onChainTxHash ?? "0xescrow-demo-locked"
       },
       ...traceEvents
     ];
@@ -711,6 +778,87 @@ export function createOrder(input: Omit<Order, "id" | "createdAt">) {
 
 export function getOrders() {
   return [...orders];
+}
+
+export function getOrderById(orderId: string) {
+  return orders.find((order) => order.id === orderId);
+}
+
+export function upsertOrder(input: Order) {
+  const existingIndex = orders.findIndex((order) => order.id === input.id);
+  const nextOrder = { ...input };
+
+  if (existingIndex >= 0) {
+    orders[existingIndex] = {
+      ...orders[existingIndex],
+      ...nextOrder
+    };
+
+    return orders[existingIndex];
+  }
+
+  orders = [nextOrder, ...orders];
+  return nextOrder;
+}
+
+export function updateOrderStatus(input: {
+  orderId: string;
+  escrowStatus: Order["escrowStatus"];
+  onChainTxHash?: string;
+}) {
+  const order = getOrderById(input.orderId);
+  if (!order) {
+    return undefined;
+  }
+
+  order.escrowStatus = input.escrowStatus;
+  if (input.onChainTxHash) {
+    order.onChainTxHash = input.onChainTxHash;
+  }
+
+  const listing = getListingById(order.listingId);
+  if (listing) {
+    if (input.escrowStatus === "released") {
+      listing.status = "completed";
+    } else if (input.escrowStatus === "refunded") {
+      listing.status = "verified";
+    } else if (input.escrowStatus === "disputed") {
+      listing.status = "flagged";
+    }
+
+    const title =
+      input.escrowStatus === "released"
+        ? "Escrow released"
+        : input.escrowStatus === "refunded"
+          ? "Buyer refunded"
+          : input.escrowStatus === "disputed"
+            ? "Escrow disputed"
+            : "Order updated";
+
+    const detail =
+      input.escrowStatus === "released"
+        ? `${order.buyerName} released the escrow payment for ${listing.crop}.`
+        : input.escrowStatus === "refunded"
+          ? `${order.buyerName} was refunded for ${listing.crop}.`
+          : input.escrowStatus === "disputed"
+            ? `${order.buyerName} raised a dispute for ${listing.crop}.`
+            : `Order ${order.id} changed to ${input.escrowStatus}.`;
+
+    traceEvents = [
+      {
+        id: id("trace"),
+        batchId: listing.batchId,
+        title,
+        detail,
+        status: input.escrowStatus === "disputed" ? "flagged" : "done",
+        timestamp: new Date().toISOString(),
+        txHash: input.onChainTxHash
+      },
+      ...traceEvents
+    ];
+  }
+
+  return order;
 }
 
 export function getTrace(batchId: string) {
@@ -747,6 +895,54 @@ export function ensureVideoRoom(listingId: string, buyerName?: string) {
 
   videoRooms = [room, ...videoRooms];
   return room;
+}
+
+export function recordVideoVerification(input: {
+  roomId: string;
+  listingId?: string;
+  onChainBatchId?: number;
+  verificationReference: string;
+  expertResult: string;
+  aiQualityScore: number;
+  txHash?: string;
+}) {
+  const listing =
+    getListingByRoomId(input.roomId) ??
+    (input.listingId ? getListingById(input.listingId) : undefined) ??
+    (input.onChainBatchId ? listings.find((item) => item.onChainBatchId === input.onChainBatchId) : undefined);
+  if (!listing) {
+    return undefined;
+  }
+
+  listing.verified = true;
+  if (listing.status === "listed" || listing.status === "under_review" || listing.status === "flagged") {
+    listing.status = "verified";
+  }
+
+  if (input.aiQualityScore >= 95) {
+    listing.qualityGrade = "A+";
+  } else if (input.aiQualityScore >= 80) {
+    listing.qualityGrade = "A";
+  } else if (input.aiQualityScore >= 60) {
+    listing.qualityGrade = "B";
+  } else {
+    listing.qualityGrade = "C";
+  }
+
+  traceEvents = [
+    {
+      id: id("trace"),
+      batchId: listing.batchId,
+      title: input.txHash ? "Video verification saved on-chain" : "Video verification completed",
+      detail: `${input.expertResult}. Reference: ${input.verificationReference}.`,
+      status: "done",
+      timestamp: new Date().toISOString(),
+      txHash: input.txHash
+    },
+    ...traceEvents
+  ];
+
+  return listing;
 }
 
 export function getDashboardMetrics() {

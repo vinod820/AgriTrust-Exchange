@@ -15,6 +15,7 @@ import {
   Globe,
   Lock
 } from "lucide-react";
+import { BrandMark } from "@/components/branding/BrandMark";
 import { useVoice } from "@/components/voice/VoiceProvider";
 
 const roles = [
@@ -438,20 +439,14 @@ export default function HomePage() {
             fontSize: "0.875rem"
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "var(--space-sm)" }}>
-              <div style={{
-                width: 32,
-                height: 32,
-                borderRadius: "var(--radius-sm)",
-                background: "var(--brand-primary)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "var(--brand-secondary)",
-                fontWeight: 900,
-                fontSize: "0.875rem"
-              }}>
-                KV
-              </div>
+              <BrandMark
+                size={32}
+                style={{
+                  borderRadius: "var(--radius-sm)",
+                  color: "var(--brand-secondary)"
+                }}
+                background="var(--brand-primary)"
+              />
               <span>KrishiVoice Chain</span>
             </div>
             <div>© 2026 KrishiVoice Chain. Built for the future of farming.</div>

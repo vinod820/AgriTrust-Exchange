@@ -16,6 +16,7 @@ import {
   ArrowLeft
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
+import { BrandMark } from "@/components/branding/BrandMark";
 
 export default function ConsumerPage() {
   const [batchId, setBatchId] = useState("");
@@ -33,7 +34,7 @@ export default function ConsumerPage() {
       <header className="nav-header">
         <div className="nav-container">
           <Link href="/" className="nav-brand" data-voice="go home open home page">
-            <div className="nav-logo" style={{ background: "#00C853", color: "#FDFBF7" }}>KV</div>
+            <BrandMark className="nav-logo" style={{ background: "#00C853", color: "#FDFBF7" }} />
             <div>
               <div className="nav-title">Consumer Portal</div>
               <div className="nav-subtitle">Verify & Trust</div>

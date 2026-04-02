@@ -168,6 +168,88 @@ function getClickableCandidates() {
     .filter((item) => item.text);
 }
 
+function isElementVisible(element: HTMLElement) {
+  const style = window.getComputedStyle(element);
+  const rect = element.getBoundingClientRect();
+  return (
+    !element.hasAttribute("disabled") &&
+    style.display !== "none" &&
+    style.visibility !== "hidden" &&
+    rect.width > 0 &&
+    rect.height > 0
+  );
+}
+
+function navigateToElement(target: HTMLElement, router: ReturnType<typeof useRouter>) {
+  if (target instanceof HTMLAnchorElement && target.href) {
+    const targetUrl = new URL(target.href, window.location.origin);
+    const nextPath = `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`;
+    router.push(nextPath);
+    return true;
+  }
+
+  target.click();
+  return true;
+}
+
+function getCallCandidates() {
+  const selectors = [
+    "a[href*='/call/']",
+    "a[data-voice*='call']",
+    "button[data-voice*='call']",
+    "a[data-voice*='video room']",
+    "button[data-voice*='video room']",
+    "a[data-voice*='video call']",
+    "button[data-voice*='video call']"
+  ].join(",");
+
+  return Array.from(document.querySelectorAll<HTMLElement>(selectors))
+    .filter((element) => {
+      if (element.dataset.testid === "voice-fab" || element.dataset.testid === "end-call-btn") {
+        return false;
+      }
+
+      return isElementVisible(element);
+    })
+    .map((element) => {
+      const href = element instanceof HTMLAnchorElement ? element.href : "";
+      const voice = element.getAttribute("data-voice") ?? "";
+      const text = normalizeText(
+        `${voice} ${element.innerText || ""} ${element.getAttribute("aria-label") || ""} ${element.getAttribute("title") || ""} ${href}`
+      );
+
+      return { element, href, text };
+    })
+    .filter((item) => item.text);
+}
+
+function openBestCallRoom(rawText: string, router: ReturnType<typeof useRouter>) {
+  const cleaned = removeStopWords(rawText);
+  const candidates = getCallCandidates();
+  let best: { element: HTMLElement; href: string; text: string } | null = null;
+  let bestScore = 0;
+
+  for (const candidate of candidates) {
+    const score = similarity(cleaned, candidate.text);
+    if (score > bestScore) {
+      best = candidate;
+      bestScore = score;
+    }
+  }
+
+  if (best && bestScore >= 0.4) {
+    return navigateToElement(best.element, router);
+  }
+
+  const firstCallLink = candidates.find((candidate) => candidate.href.includes("/call/"));
+  if (firstCallLink) {
+    return navigateToElement(firstCallLink.element, router);
+  }
+
+  router.push("/call/demo");
+  return true;
+}
+
 function clickBestMatch(rawText: string) {
   const cleaned = removeStopWords(rawText);
   const actionText = cleaned
@@ -359,12 +441,7 @@ function getCommands(router: ReturnType<typeof useRouter>): VoiceCommand[] {
       ],
       response: "Opening the video call room.",
       action: async (rawText) => {
-        if (clickBestMatch(rawText)) {
-          return true;
-        }
-
-        router.push("/call/demo");
-        return true;
+        return openBestCallRoom(rawText, router);
       }
     },
     {
@@ -372,9 +449,6 @@ function getCommands(router: ReturnType<typeof useRouter>): VoiceCommand[] {
       phrases: [
         "open trace page",
         "open video room",
-        "call buyer",
-        "connect buyer",
-        "start video call",
         "camera ons",
         "lock escrow",
         "run ai analysis",

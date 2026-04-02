@@ -1,15 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { TraceTimeline } from "@/components/trace/TraceTimeline";
-import { getListings, getTrace } from "@/lib/data/mock-db";
+import { getMergedListingByBatchId, getMergedTrace } from "@/lib/contracts/read-models";
 
-export default function TracePage({ params }: { params: { batchId: string } }) {
-  const listing = getListings().find((item) => item.batchId === params.batchId);
+export default async function TracePage({ params }: { params: { batchId: string } }) {
+  const listing = await getMergedListingByBatchId(params.batchId);
   if (!listing) {
     notFound();
   }
 
-  const events = getTrace(params.batchId);
+  const events = await getMergedTrace(params.batchId);
 
   return (
     <main className="page-stack">

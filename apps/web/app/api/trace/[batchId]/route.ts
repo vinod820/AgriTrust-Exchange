@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { getTrace } from "@/lib/data/mock-db";
+import { getMergedTrace } from "@/lib/contracts/read-models";
 
 export async function GET(_: Request, { params }: { params: { batchId: string } }) {
-  return NextResponse.json(getTrace(params.batchId));
+  return NextResponse.json(await getMergedTrace(params.batchId));
 }
 

@@ -22,6 +22,13 @@ export type AnalysisResult = {
   recommendations: string[];
 };
 
+export type FarmerProfile = {
+  name: string;
+  wallet: string;
+  location: string;
+  trustScore: number;
+};
+
 export type Listing = {
   id: string;
   batchId: string;
@@ -40,6 +47,10 @@ export type Listing = {
   description: string;
   liveRoomId?: string;
   trustScore: number;
+  farmer?: FarmerProfile;
+  onChainBatchId?: number;
+  onChainTxHash?: string;
+  geoLabel?: string;
 };
 
 export type Order = {
@@ -52,6 +63,8 @@ export type Order = {
   totalAmount: number;
   escrowStatus: "pending" | "locked" | "released" | "refunded" | "disputed";
   createdAt: string;
+  onChainOrderId?: number;
+  onChainTxHash?: string;
 };
 
 export type TraceEvent = {
@@ -83,6 +96,7 @@ export type VideoRoom = {
 };
 
 export type CreateListingInput = {
+  batchId?: string;
   crop: string;
   farmerName: string;
   farmerWallet: string;
@@ -92,5 +106,8 @@ export type CreateListingInput = {
   harvestDate: string;
   description: string;
   images?: string[];
+  onChainBatchId?: number;
+  onChainTxHash?: string;
+  geoLabel?: string;
 };
 
